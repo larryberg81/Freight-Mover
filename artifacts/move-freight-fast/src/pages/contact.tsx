@@ -1,114 +1,199 @@
-import { Mail, CheckCircle2 } from "lucide-react";
+import { Send, Mail, Phone, MapPin, Clock } from "lucide-react";
+
+const services = [
+  "Road Freight",
+  "International Air Freight",
+  "Sea Freight",
+  "Customs Brokerage",
+  "Warehousing & Storage",
+  "Express Delivery",
+  "Other",
+];
+
+const contactInfo = [
+  {
+    icon: Mail,
+    label: "Email",
+    value: "info@movefreightfast.com",
+    sub: "We reply within 24 hours",
+  },
+  {
+    icon: Phone,
+    label: "Phone",
+    value: "+44 20 7946 0958",
+    sub: "Mon – Fri, 8am – 6pm",
+  },
+  {
+    icon: MapPin,
+    label: "Head Office",
+    value: "12 Commerce Way, London, EC1A 1BB",
+    sub: "United Kingdom",
+  },
+  {
+    icon: Clock,
+    label: "Operations",
+    value: "24 / 7 Tracking Support",
+    sub: "Always available",
+  },
+];
 
 export function Contact() {
   return (
     <div className="flex-1 flex flex-col bg-[#080d1a]">
-      {/* Header */}
-      <div className="pt-32 pb-16 px-6 text-center">
-        <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-1000">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
+
+      {/* ── Hero ── */}
+      <div className="pt-32 pb-16 px-6 text-center border-b border-white/5">
+        <div className="max-w-2xl mx-auto">
+          <span className="text-[#00b8d4] font-semibold tracking-widest uppercase text-sm mb-4 block">
+            Get In Touch
+          </span>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
             Contact Us
           </h1>
-          <p className="text-lg text-white/70">
-            Ready to optimize your logistics? Get in touch with our experts for personalized solutions and competitive quotes
+          <p className="text-white/60 text-lg leading-relaxed">
+            Ready to optimise your logistics? Speak to our team for tailored solutions and competitive quotes.
           </p>
         </div>
       </div>
 
-      <div className="pb-24 px-6 relative">
-        <div className="container mx-auto max-w-6xl">
-          
-          {/* Top Info Card */}
-          <div className="mb-24 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150">
-            <div className="bg-[#111827]/80 border border-white/5 rounded-2xl p-8 max-w-sm mx-auto sm:mx-0 flex flex-col items-center text-center">
-              <div className="w-12 h-12 rounded-full bg-[#1e3a8a]/30 border border-[#00b8d4]/30 flex items-center justify-center mb-6">
-                <Mail className="w-5 h-5 text-[#00b8d4]" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">Email Us</h3>
-              <p className="text-[#00b8d4] font-medium mb-1">info@movefreightfast.com</p>
-              <p className="text-white/50 text-sm">24/7 Response</p>
-            </div>
+      {/* ── Contact Info Strip ── */}
+      <div className="bg-[#0d1627] border-b border-white/5">
+        <div className="container mx-auto max-w-6xl px-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-white/8">
+            {contactInfo.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className="flex items-start gap-4 px-6 py-7">
+                  <div className="w-10 h-10 rounded-lg bg-[#00b8d4]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Icon className="w-5 h-5 text-[#00b8d4]" />
+                  </div>
+                  <div>
+                    <div className="text-white/40 text-xs uppercase tracking-wide mb-1">{item.label}</div>
+                    <div className="text-white font-semibold text-sm leading-snug">{item.value}</div>
+                    <div className="text-white/40 text-xs mt-0.5">{item.sub}</div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        </div>
+      </div>
 
-          {/* Form Section */}
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
-            
-            {/* Left Content */}
-            <div className="animate-in fade-in slide-in-from-left-8 duration-1000 delay-300">
-              <span className="text-[#00b8d4] font-bold tracking-wider uppercase text-sm mb-4 block">
-                Get In Touch
-              </span>
-              <h2 className="text-4xl font-bold text-white mb-6">
-                Let's Discuss Your Logistics Needs
+      {/* ── Main Content ── */}
+      <div className="py-16 px-6">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-5 gap-12 items-start">
+
+            {/* Left — intro text */}
+            <div className="lg:col-span-2">
+              <h2 className="text-3xl font-bold text-white mb-4 leading-snug">
+                Let's Discuss Your<br />Logistics Needs
               </h2>
-              <p className="text-white/70 text-lg leading-relaxed mb-8">
-                Whether you need a one-time shipment or a comprehensive logistics solution, our team is ready to help. Fill out the form and we'll get back to you within 24 hours.
+              <p className="text-white/55 leading-relaxed mb-8">
+                Whether you need a one-time shipment or a full logistics partnership, our specialists are ready to help. Fill in the form and we'll get back to you within 24 hours.
               </p>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-6 h-6 text-[#00b8d4]" />
-                <span className="text-white font-medium">Free Consultation</span>
-              </div>
+
+              <ul className="space-y-3">
+                {[
+                  "Free, no-obligation consultation",
+                  "Competitive rates across all freight modes",
+                  "Dedicated account manager assigned",
+                  "Response guaranteed within 24 hours",
+                ].map((point) => (
+                  <li key={point} className="flex items-center gap-3 text-white/70 text-sm">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#00b8d4] flex-shrink-0" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            {/* Right Form */}
-            <div className="bg-[#111827]/80 border border-white/5 rounded-2xl p-8 animate-in fade-in slide-in-from-right-8 duration-1000 delay-400">
+            {/* Right — form */}
+            <div className="lg:col-span-3 bg-[#0d1627] border border-white/8 rounded-2xl p-8">
               <h3 className="text-2xl font-bold text-white mb-8">Send us a Message</h3>
-              
-              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/80">First Name *</label>
-                    <input 
-                      type="text" 
+
+              <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+
+                {/* First / Last Name */}
+                <div className="grid grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-bold text-white mb-2">First Name *</label>
+                    <input
+                      type="text"
                       placeholder="John"
-                      className="w-full bg-[#1f2937]/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-[#00b8d4] transition-colors"
-                      data-testid="input-first-name"
+                      className="w-full bg-[#111827] border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/80">Last Name *</label>
-                    <input 
-                      type="text" 
+                  <div>
+                    <label className="block text-sm font-bold text-white mb-2">Last Name *</label>
+                    <input
+                      type="text"
                       placeholder="Doe"
-                      className="w-full bg-[#1f2937]/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-[#00b8d4] transition-colors"
-                      data-testid="input-last-name"
+                      className="w-full bg-[#111827] border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm"
                     />
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/80">Email Address *</label>
-                  <input 
-                    type="email" 
-                    placeholder="john@example.com"
-                    className="w-full bg-[#1f2937]/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-[#00b8d4] transition-colors"
-                    data-testid="input-email"
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">Email Address *</label>
+                  <input
+                    type="email"
+                    placeholder="john@company.com"
+                    className="w-full bg-[#111827] border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/80">Message *</label>
-                  <textarea 
-                    rows={4}
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="+1 602 123 4567"
+                    className="w-full bg-[#111827] border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm"
+                  />
+                </div>
+
+                {/* Service Interest */}
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">Service Interest</label>
+                  <select
+                    className="w-full bg-[#111827] border border-white/10 rounded-lg px-4 py-3 text-white/60 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm appearance-none cursor-pointer"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Select a service</option>
+                    {services.map((s) => (
+                      <option key={s} value={s} className="text-white bg-[#111827]">{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Message */}
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">Message *</label>
+                  <textarea
+                    rows={5}
                     placeholder="Tell us about your logistics needs..."
-                    className="w-full bg-[#1f2937]/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-[#00b8d4] transition-colors resize-none"
-                    data-testid="input-message"
+                    className="w-full bg-[#111827] border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm resize-y"
                   />
                 </div>
 
-                <button 
+                {/* Submit */}
+                <button
                   type="submit"
-                  className="w-full bg-[#00b8d4] hover:bg-[#17c3d4] text-white font-bold rounded-lg px-4 py-4 transition-colors"
-                  data-testid="button-submit-contact"
+                  className="w-full flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold rounded-lg px-6 py-4 transition-colors text-base mt-2"
                 >
+                  <Send className="w-4 h-4" />
                   Send Message
                 </button>
+
               </form>
             </div>
 
           </div>
         </div>
       </div>
+
     </div>
   );
 }
