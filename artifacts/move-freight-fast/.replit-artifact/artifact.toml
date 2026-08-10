@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Move Freight Fast"
+description = "A freight logistics company website with pages for Home, About, Services, Contact, and Shipment Tracking. Recreates the Move Freight Fast brand: dark navy theme, cyan accent, multi-page navigation, tracking form."
+version = "1.0.0"
+id = "artifacts/move-freight-fast"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23670
+
+[services.development]
+run = "pnpm --filter @workspace/move-freight-fast run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/move-freight-fast", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/move-freight-fast/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23670"
+BASE_PATH = "/"
