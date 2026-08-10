@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Search, Plus } from "lucide-react";
+import { Search } from "lucide-react";
 
 export function Navbar() {
   const [location] = useLocation();
@@ -39,18 +39,6 @@ export function Navbar() {
             ))}
           </nav>
           
-          <Link
-            href="/ship"
-            data-testid="link-nav-ship"
-            className={`flex items-center gap-2 border px-4 py-2.5 rounded-md font-medium text-sm transition-colors ${
-              location === "/ship"
-                ? "border-[#00b8d4] text-[#00b8d4]"
-                : "border-white/20 text-white/80 hover:border-[#00b8d4]/60 hover:text-[#00b8d4]"
-            }`}
-          >
-            <Plus className="w-4 h-4" />
-            Create Shipment
-          </Link>
           <Link
             href="/track"
             data-testid="link-nav-track"

@@ -18,6 +18,7 @@ import { Services } from '@/pages/services';
 import { Contact } from '@/pages/contact';
 import { Track } from '@/pages/track';
 import { CreateShipment } from '@/pages/create-shipment';
+import { Admin } from '@/pages/admin';
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ function Router() {
           <Route path="/contact" component={Contact} />
           <Route path="/track" component={Track} />
           <Route path="/ship" component={CreateShipment} />
+          <Route path="/admin" component={Admin} />
           <Route component={NotFound} />
         </Switch>
       </RoutedErrorBoundary>
