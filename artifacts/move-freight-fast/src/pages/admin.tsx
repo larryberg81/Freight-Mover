@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import {
   Lock, Eye, EyeOff, ShieldCheck,
   Package, Search, BarChart3, Users, Truck, Settings,
+  Zap, Copy, CheckCircle2, X,
 } from "lucide-react";
 
 const ADMIN_PASSWORD = "admin123";
@@ -116,25 +117,163 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   );
 }
 
+// ── Demo data ─────────────────────────────────────────────────────────────────
+
+const DEMO_SENDERS = [
+  { name: "James Hargreaves", company: "MFF Operations", email: "james@movefreightfast.com", phone: "+44 20 7946 0201" },
+  { name: "Sarah Okonkwo", company: "Global Trade Co.", email: "sarah@globaltrade.com", phone: "+61 2 9000 1234" },
+  { name: "Daniel Reeves", company: "Reeves Imports Pty Ltd", email: "d.reeves@reevesimports.au", phone: "+61 3 8800 5678" },
+];
+const DEMO_RECIPIENTS = [
+  { name: "Alice Chen", company: "Pacific Retail Group", email: "alice@pacificretail.com.au", phone: "+61 7 3200 9900", street: "12 Harbour View Rd", city: "Brisbane", state: "QLD", postcode: "4000", country: "Australia" },
+  { name: "Mark Thompson", company: "Thompson Engineering", email: "mark@thompsoneng.co.uk", phone: "+44 161 500 0022", street: "88 Industrial Way", city: "Manchester", state: "England", postcode: "M1 2AB", country: "United Kingdom" },
+  { name: "Nina Patel", company: "Patel Distribution Ltd", email: "nina@pateldist.nz", phone: "+64 9 888 3300", street: "44 Commerce Street", city: "Auckland", state: "AKL", postcode: "1010", country: "New Zealand" },
+];
+const DEMO_SERVICES = ["Road Freight", "Overnight Express", "International Air Freight", "Sea Freight", "Economy Ground"];
+const DEMO_GOODS = ["Electronic components", "Automotive parts", "Textile samples", "Medical supplies", "Industrial equipment", "Consumer goods"];
+
+function generateTestShipment() {
+  const sender = DEMO_SENDERS[Math.floor(Math.random() * DEMO_SENDERS.length)];
+  const recipient = DEMO_RECIPIENTS[Math.floor(Math.random() * DEMO_RECIPIENTS.length)];
+  const service = DEMO_SERVICES[Math.floor(Math.random() * DEMO_SERVICES.length)];
+  const goods = DEMO_GOODS[Math.floor(Math.random() * DEMO_GOODS.length)];
+  const weight = (Math.random() * 50 + 1).toFixed(1);
+  const id = `MFF${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+  const now = new Date();
+  const eta = new Date(now.getTime() + (2 + Math.floor(Math.random() * 5)) * 86400000);
+  return {
+    trackingId: id,
+    bookedAt: now.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" }),
+    estDelivery: eta.toLocaleDateString("en-AU", { dateStyle: "medium" }),
+    sender,
+    recipient,
+    service,
+    weight: `${weight} kg`,
+    goods,
+    status: "Pending Pickup",
+  };
+}
+
+type TestShipment = ReturnType<typeof generateTestShipment>;
+
+// ── Test shipment modal ───────────────────────────────────────────────────────
+
+function TestShipmentModal({ shipment, onClose }: { shipment: TestShipment; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  function copy() {
+    navigator.clipboard.writeText(shipment.trackingId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  const rows: [string, string][] = [
+    ["Status", shipment.status],
+    ["Service", shipment.service],
+    ["Weight", shipment.weight],
+    ["Contents", shipment.goods],
+    ["Booked", shipment.bookedAt],
+    ["Est. Delivery", shipment.estDelivery],
+    ["Sender", `${shipment.sender.name} — ${shipment.sender.company}`],
+    ["Sender Email", shipment.sender.email],
+    ["Sender Phone", shipment.sender.phone],
+    ["Recipient", `${shipment.recipient.name} — ${shipment.recipient.company}`],
+    ["Recipient Address", `${shipment.recipient.street}, ${shipment.recipient.city} ${shipment.recipient.state} ${shipment.recipient.postcode}`],
+    ["Destination Country", shipment.recipient.country],
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-[#0d1627] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
+
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-yellow-400" />
+            <h2 className="text-white font-bold text-lg">Test Shipment Generated</h2>
+          </div>
+          <button onClick={onClose} className="text-white/35 hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tracking ID hero */}
+        <div className="px-6 py-5 bg-[#111827]/60 border-b border-white/8">
+          <div className="text-[#00b8d4] text-xs font-semibold uppercase tracking-widest mb-1">Tracking ID</div>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-bold text-white tracking-wider font-mono">{shipment.trackingId}</span>
+            <button onClick={copy} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/40 hover:text-white">
+              {copied ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="px-6 py-4 max-h-80 overflow-y-auto space-y-1">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex justify-between items-start py-2 border-b border-white/5 last:border-0 text-sm gap-4">
+              <span className="text-white/40 flex-shrink-0">{label}</span>
+              <span className="text-white font-medium text-right">{value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 py-5 border-t border-white/8 flex gap-3">
+          <Link
+            href={`/track?id=${shipment.trackingId}`}
+            onClick={onClose}
+            className="flex-1 flex items-center justify-center gap-2 bg-[#00b8d4] hover:bg-[#00a0bb] text-white font-semibold py-3 rounded-lg transition-colors text-sm"
+          >
+            <Search className="w-4 h-4" /> Track It
+          </Link>
+          <button
+            onClick={onClose}
+            className="flex-1 border border-white/15 hover:border-white/30 text-white/70 hover:text-white font-semibold py-3 rounded-lg transition-colors text-sm"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
+  const [testShipment, setTestShipment] = useState<TestShipment | null>(null);
+
+  function handleGenerate() {
+    setTestShipment(generateTestShipment());
+  }
+
   return (
+    <>
+      {testShipment && <TestShipmentModal shipment={testShipment} onClose={() => setTestShipment(null)} />}
     <div className="flex-1 py-12 px-6">
       <div className="container mx-auto max-w-5xl space-y-8">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <span className="text-[#00b8d4] font-semibold text-sm uppercase tracking-widest block mb-1">Admin Portal</span>
             <h1 className="text-3xl font-bold text-white">Dashboard</h1>
           </div>
-          <button
-            onClick={onLogout}
-            className="text-white/40 hover:text-white/70 text-sm font-medium border border-white/10 hover:border-white/20 px-4 py-2 rounded-lg transition-colors"
-          >
-            Sign Out
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleGenerate}
+              className="flex items-center gap-2 bg-yellow-500/15 hover:bg-yellow-500/25 border border-yellow-500/30 text-yellow-400 font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm"
+            >
+              <Zap className="w-4 h-4" /> Generate Test ID
+            </button>
+            <button
+              onClick={onLogout}
+              className="text-white/40 hover:text-white/70 text-sm font-medium border border-white/10 hover:border-white/20 px-4 py-2.5 rounded-lg transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
 
         {/* Quick stats */}
@@ -220,6 +359,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
       </div>
     </div>
+    </>
   );
 }
 
