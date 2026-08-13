@@ -31,6 +31,8 @@ interface PackageInfo {
   description: string;
   insurance: string;
   signatureRequired: boolean;
+  pickupDate: string;
+  deliveryDate: string;
 }
 
 interface ShipmentResult {
@@ -70,7 +72,7 @@ function emptyAddress(): Address {
 }
 
 function emptyPackage(): PackageInfo {
-  return { serviceType: "Road Freight", weight: "", length: "", width: "", height: "", description: "", insurance: "0", signatureRequired: false };
+  return { serviceType: "Road Freight", weight: "", length: "", width: "", height: "", description: "", insurance: "0", signatureRequired: false, pickupDate: "", deliveryDate: "" };
 }
 
 // ── Field components ─────────────────────────────────────────────────────────
@@ -220,6 +222,25 @@ function PackageForm({ data, onChange }: { data: PackageInfo; onChange: (d: Pack
         </div>
       </Field>
 
+      <div className="grid sm:grid-cols-2 gap-5">
+        <Field label="Pickup Date">
+          <input
+            type="date"
+            className={inputCls}
+            value={data.pickupDate}
+            onChange={set("pickupDate")}
+          />
+        </Field>
+        <Field label="Expected Delivery Date">
+          <input
+            type="date"
+            className={inputCls}
+            value={data.deliveryDate}
+            onChange={set("deliveryDate")}
+          />
+        </Field>
+      </div>
+
       <div className="flex items-center gap-3 bg-[#111827] border border-white/10 rounded-lg px-4 py-3 cursor-pointer select-none"
         onClick={() => onChange({ ...data, signatureRequired: !data.signatureRequired })}>
         <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${data.signatureRequired ? "bg-[#00b8d4] border-[#00b8d4]" : "border-white/20"}`}>
@@ -329,6 +350,8 @@ function ConfirmationScreen({ result, onNew }: { result: ShipmentResult; onNew: 
           { label: "Dimensions", value: result.pkg.length ? `${result.pkg.length} × ${result.pkg.width} × ${result.pkg.height} cm` : "—" },
           { label: "Insurance", value: result.pkg.insurance ? `$${result.pkg.insurance} Coverage` : "$0.00 Coverage" },
           { label: "Signature Required", value: result.pkg.signatureRequired ? "Yes" : "No" },
+          { label: "Pickup Date", value: result.pkg.pickupDate || "—" },
+          { label: "Delivery Date", value: result.pkg.deliveryDate || "—" },
           { label: "Description", value: result.pkg.description },
         ]} />
         <ReviewSection title="Booking Info" icon={Truck} rows={[
@@ -382,6 +405,8 @@ export function CreateShipment() {
       paymentMode: "Others",
       baseRate: 0,
       notes: pkg.description,
+      pickupDate: pkg.pickupDate,
+      deliveryDate: pkg.deliveryDate,
     });
 
     setResult({ trackingId, createdAt, sender, recipient, pkg });
@@ -476,6 +501,8 @@ export function CreateShipment() {
                     { label: "Dimensions", value: pkg.length ? `${pkg.length} × ${pkg.width} × ${pkg.height} cm` : "—" },
                     { label: "Insurance", value: `$${pkg.insurance || "0"} Coverage` },
                     { label: "Signature", value: pkg.signatureRequired ? "Required" : "Not required" },
+                    { label: "Pickup Date", value: pkg.pickupDate || "—" },
+                    { label: "Delivery Date", value: pkg.deliveryDate || "—" },
                     { label: "Contents", value: pkg.description },
                   ]} />
                 </div>

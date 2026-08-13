@@ -20,6 +20,8 @@ export interface StoredShipment {
   paymentMode: string;
   baseRate: number;
   notes: string;
+  pickupDate?: string;
+  deliveryDate?: string;
 }
 
 const STORE_KEY  = "mff_shipments";

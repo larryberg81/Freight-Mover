@@ -43,6 +43,7 @@ const MOCK_SHIPMENT = {
   // Shipment
   origin: "3175 Dandenong Vic",
   destination: "422 wyee farms road, wyee NSW 2259",
+  pickupDate: "Aug 04, 2026",
   estDelivery: "Aug 06, 2026",
   weight: "12 kg",
   serviceType: "Overnight",
@@ -319,13 +320,14 @@ function ShipmentResult({ data }: { data: typeof MOCK_SHIPMENT }) {
           </div>
         </div>
 
-        {/* Row 3: 4 info cells */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Row 3: info cells */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {[
-            { icon: MapPin, color: "text-green-400", label: "Origin", value: data.origin },
-            { icon: Flag, color: "text-red-400", label: "Destination", value: data.destination },
-            { icon: CalendarDays, color: "text-blue-400", label: "Est. Delivery", value: data.estDelivery },
-            { icon: Weight, color: "text-purple-400", label: "Weight", value: data.weight },
+            { icon: MapPin,       color: "text-green-400",  label: "Origin",        value: data.origin },
+            { icon: Flag,         color: "text-red-400",    label: "Destination",   value: data.destination },
+            { icon: Weight,       color: "text-purple-400", label: "Weight",        value: data.weight },
+            { icon: CalendarDays, color: "text-cyan-400",   label: "Pickup Date",   value: data.pickupDate || "—" },
+            { icon: CalendarDays, color: "text-blue-400",   label: "Est. Delivery", value: data.estDelivery },
           ].map(({ icon: Icon, color, label, value }) => (
             <div key={label} className="bg-[#111827] border border-white/8 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">

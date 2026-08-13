@@ -23,6 +23,8 @@ interface ReceiptData {
   destination: string;
   shipmentMode: string;
   insurance: string;
+  pickupDate?: string;
+  deliveryDate?: string;
   paymentStatus: string;
   paymentMode: string;
   baseShippingRate: number;
@@ -86,6 +88,8 @@ function findReceipt(trackingId: string): ReceiptData | null {
         destination: stored.dest,
         shipmentMode: stored.shipmentMode,
         insurance: "$0.00",
+        pickupDate: stored.pickupDate,
+        deliveryDate: stored.deliveryDate,
         paymentStatus: stored.paymentStatus,
         paymentMode: stored.paymentMode,
         baseShippingRate: stored.baseRate,
@@ -281,6 +285,8 @@ export function Receipt() {
                 <InfoRow label="To:"            value={data.destination} />
                 <InfoRow label="Shipment Mode:" value={data.shipmentMode} />
                 <InfoRow label="Insurance:"     value={data.insurance} />
+                {data.pickupDate   && <InfoRow label="Pickup Date:"   value={data.pickupDate} />}
+                {data.deliveryDate && <InfoRow label="Delivery Date:" value={data.deliveryDate} />}
               </div>
             </div>
           </div>
