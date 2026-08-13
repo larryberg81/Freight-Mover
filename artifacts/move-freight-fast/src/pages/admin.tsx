@@ -3,47 +3,128 @@ import { Link } from "wouter";
 import {
   Lock, Eye, EyeOff, ShieldCheck,
   Package, Search, BarChart3, Users, Truck, Settings,
-  Zap, Copy, CheckCircle2, X,
+  Zap, Copy, CheckCircle2, X, PenLine, Save, CreditCard,
 } from "lucide-react";
 
 const ADMIN_PASSWORD = "admin123";
 const SESSION_KEY = "mff_admin_auth";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface Shipment {
+  id: string;
+  sender: string;
+  senderEmail: string;
+  senderPhone: string;
+  senderAddress: string;
+  recipient: string;
+  recipientEmail: string;
+  recipientPhone: string;
+  dest: string;
+  service: string;
+  weight: string;
+  shipmentMode: string;
+  shipmentStatus: string;
+  paymentStatus: string;
+  paymentMode: string;
+  baseRate: number;
+  notes: string;
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const PAYMENT_STATUSES = [
+  { value: "UNPAID",           label: "Unpaid",            color: "text-red-400 bg-red-500/10 border-red-500/30" },
+  { value: "PENDING_PAYMENT",  label: "Pending Payment",   color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" },
+  { value: "DEPOSIT_RECEIVED", label: "Deposit Received",  color: "text-blue-400 bg-blue-500/10 border-blue-500/30" },
+  { value: "PARTIALLY_PAID",   label: "Partially Paid",    color: "text-orange-400 bg-orange-500/10 border-orange-500/30" },
+  { value: "PAID",             label: "Paid",              color: "text-green-400 bg-green-500/10 border-green-500/30" },
+  { value: "REFUNDED",         label: "Refunded",          color: "text-purple-400 bg-purple-500/10 border-purple-500/30" },
+  { value: "WAIVED",           label: "Waived",            color: "text-white/50 bg-white/5 border-white/10" },
+];
+
+const SHIPMENT_STATUSES = ["Pending Pickup", "Picked Up", "In Transit", "Out for Delivery", "Delivered", "On Hold", "Returned"];
+const SERVICE_TYPES     = ["Road Freight", "Overnight Express", "International Air Freight", "Sea Freight", "Economy Ground", "Same Day Delivery"];
+const SHIPMENT_MODES    = ["Land Freight", "Air Freight", "Sea Freight", "Express Courier"];
+const PAYMENT_MODES     = ["Bank Transfer", "Credit Card", "Cash", "PayPal", "Invoice", "Others"];
+
 const QUICK_STATS = [
-  { icon: Package, label: "Total Shipments", value: "1,284", change: "+12% this month" },
-  { icon: Truck, label: "In Transit", value: "43", change: "Active right now" },
-  { icon: Users, label: "Active Clients", value: "512", change: "+8 this week" },
-  { icon: BarChart3, label: "On-Time Rate", value: "98.2%", change: "Last 30 days" },
+  { icon: Package,   label: "Total Shipments", value: "1,284", change: "+12% this month" },
+  { icon: Truck,     label: "In Transit",       value: "43",    change: "Active right now" },
+  { icon: Users,     label: "Active Clients",   value: "512",   change: "+8 this week" },
+  { icon: BarChart3, label: "On-Time Rate",      value: "98.2%", change: "Last 30 days" },
 ];
 
 const ADMIN_ACTIONS = [
-  {
-    icon: Package,
-    title: "Create Shipment",
-    description: "Book a new freight shipment and generate a tracking ID.",
-    href: "/ship",
-    cta: "Create Shipment",
-    accent: "bg-[#00b8d4] hover:bg-[#00a0bb]",
-  },
-  {
-    icon: Search,
-    title: "Track Shipment",
-    description: "Look up live status and location for any shipment.",
-    href: "/track",
-    cta: "Track Shipment",
-    accent: "bg-[#1e3a8a] hover:bg-[#1e40af]",
-  },
-  {
-    icon: Settings,
-    title: "Manage Services",
-    description: "Review and update available freight service offerings.",
-    href: "/services",
-    cta: "View Services",
-    accent: "bg-[#374151] hover:bg-[#4b5563]",
-  },
+  { icon: Package,  title: "Create Shipment",  description: "Book a new freight shipment and generate a tracking ID.", href: "/ship",     cta: "Create Shipment", accent: "bg-[#00b8d4] hover:bg-[#00a0bb]" },
+  { icon: Search,   title: "Track Shipment",   description: "Look up live status and location for any shipment.",      href: "/track",    cta: "Track Shipment",  accent: "bg-[#1e3a8a] hover:bg-[#1e40af]" },
+  { icon: Settings, title: "Manage Services",  description: "Review and update available freight service offerings.",  href: "/services", cta: "View Services",   accent: "bg-[#374151] hover:bg-[#4b5563]" },
 ];
 
-// ── Login screen ─────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function paymentStyle(value: string) {
+  return PAYMENT_STATUSES.find(p => p.value === value)?.color ?? "text-white/50 bg-white/5 border-white/10";
+}
+function paymentLabel(value: string) {
+  return PAYMENT_STATUSES.find(p => p.value === value)?.label ?? value;
+}
+
+function statusColor(s: string) {
+  if (s === "Delivered")        return "bg-green-500/15 text-green-400";
+  if (s === "In Transit")       return "bg-[#00b8d4]/15 text-[#00b8d4]";
+  if (s === "Out for Delivery") return "bg-yellow-500/15 text-yellow-400";
+  if (s === "On Hold")          return "bg-red-500/15 text-red-400";
+  return "bg-white/8 text-white/50";
+}
+
+const inputCls = "w-full bg-[#0a1020] border border-white/10 rounded-lg px-3 py-2.5 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm";
+const selectCls = `${inputCls} appearance-none cursor-pointer`;
+
+// ── Initial shipments data ────────────────────────────────────────────────────
+
+const INITIAL_SHIPMENTS: Shipment[] = [
+  { id: "MFF3847291056", sender: "J. Hargreaves", senderEmail: "james@movefreightfast.com", senderPhone: "+44 20 7946 0201", senderAddress: "12 Commerce Way, London EC1A 1BB", recipient: "Alice Chen", recipientEmail: "alice@pacificretail.com.au", recipientPhone: "+61 7 3200 9900", dest: "12 Harbour View Rd, Brisbane QLD 4000", service: "Overnight Express", weight: "8.5 kg", shipmentMode: "Air Freight", shipmentStatus: "In Transit", paymentStatus: "PAID", paymentMode: "Bank Transfer", baseRate: 120, notes: "" },
+  { id: "MFF9021847365", sender: "S. Okonkwo",    senderEmail: "sarah@globaltrade.com",     senderPhone: "+61 2 9000 1234", senderAddress: "88 George St, Sydney NSW 2000",      recipient: "Mark Thompson", recipientEmail: "mark@thompsoneng.co.uk", recipientPhone: "+44 161 500 0022", dest: "88 Industrial Way, Manchester M1 2AB", service: "Road Freight", weight: "32.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Delivered", paymentStatus: "PAID", paymentMode: "Invoice", baseRate: 85, notes: "Fragile — handle with care" },
+  { id: "MFF5088840683", sender: "D. Reeves",     senderEmail: "d.reeves@reevesimports.au", senderPhone: "+61 3 8800 5678", senderAddress: "3175 Dandenong Vic Australia",        recipient: "William Evans", recipientEmail: "william@binalong.com.au", recipientPhone: "0492071494", dest: "422 wyee farms road, wyee NSW 2259", service: "Road Freight", weight: "12.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Pending Pickup", paymentStatus: "UNPAID", paymentMode: "Others", baseRate: 50, notes: "ARB bullbar and drivers side guard" },
+  { id: "MFF7712039482", sender: "Acme Co.",      senderEmail: "dispatch@acmeco.com.au",    senderPhone: "+61 2 8000 3300", senderAddress: "99 Parramatta Rd, Sydney NSW 2150",  recipient: "Nina Patel", recipientEmail: "nina@pateldist.nz", recipientPhone: "+64 9 888 3300", dest: "44 Commerce Street, Auckland 1010", service: "International Air Freight", weight: "5.2 kg", shipmentMode: "Air Freight", shipmentStatus: "Out for Delivery", paymentStatus: "DEPOSIT_RECEIVED", paymentMode: "Bank Transfer", baseRate: 210, notes: "" },
+];
+
+// ── Demo data ─────────────────────────────────────────────────────────────────
+
+const DEMO_SENDERS    = [
+  { name: "James Hargreaves", company: "MFF Operations",       email: "james@movefreightfast.com", phone: "+44 20 7946 0201" },
+  { name: "Sarah Okonkwo",    company: "Global Trade Co.",      email: "sarah@globaltrade.com",     phone: "+61 2 9000 1234" },
+  { name: "Daniel Reeves",    company: "Reeves Imports Pty Ltd",email: "d.reeves@reevesimports.au", phone: "+61 3 8800 5678" },
+];
+const DEMO_RECIPIENTS = [
+  { name: "Alice Chen",    company: "Pacific Retail Group",   email: "alice@pacificretail.com.au", phone: "+61 7 3200 9900", street: "12 Harbour View Rd",  city: "Brisbane",  state: "QLD",     postcode: "4000", country: "Australia" },
+  { name: "Mark Thompson", company: "Thompson Engineering",   email: "mark@thompsoneng.co.uk",     phone: "+44 161 500 0022", street: "88 Industrial Way",   city: "Manchester",state: "England", postcode: "M1 2AB",country: "United Kingdom" },
+  { name: "Nina Patel",    company: "Patel Distribution Ltd", email: "nina@pateldist.nz",          phone: "+64 9 888 3300",  street: "44 Commerce Street",  city: "Auckland",  state: "AKL",     postcode: "1010", country: "New Zealand" },
+];
+const DEMO_SERVICES = ["Road Freight", "Overnight Express", "International Air Freight", "Sea Freight", "Economy Ground"];
+const DEMO_GOODS    = ["Electronic components", "Automotive parts", "Textile samples", "Medical supplies", "Industrial equipment", "Consumer goods"];
+
+function generateTestShipment() {
+  const sender    = DEMO_SENDERS[Math.floor(Math.random() * DEMO_SENDERS.length)];
+  const recipient = DEMO_RECIPIENTS[Math.floor(Math.random() * DEMO_RECIPIENTS.length)];
+  const service   = DEMO_SERVICES[Math.floor(Math.random() * DEMO_SERVICES.length)];
+  const goods     = DEMO_GOODS[Math.floor(Math.random() * DEMO_GOODS.length)];
+  const weight    = (Math.random() * 50 + 1).toFixed(1);
+  const id        = `MFF${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+  const now       = new Date();
+  const eta       = new Date(now.getTime() + (2 + Math.floor(Math.random() * 5)) * 86400000);
+  return {
+    trackingId:  id,
+    bookedAt:    now.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" }),
+    estDelivery: eta.toLocaleDateString("en-AU", { dateStyle: "medium" }),
+    sender, recipient, service, weight: `${weight} kg`, goods,
+    status: "Pending Pickup",
+  };
+}
+type TestShipment = ReturnType<typeof generateTestShipment>;
+
+// ── Login screen ──────────────────────────────────────────────────────────────
 
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
@@ -53,21 +134,13 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, "1");
-      onLogin();
-    } else {
-      setError("Incorrect password. Please try again.");
-      setShaking(true);
-      setTimeout(() => setShaking(false), 500);
-    }
+    if (password === ADMIN_PASSWORD) { sessionStorage.setItem(SESSION_KEY, "1"); onLogin(); }
+    else { setError("Incorrect password. Please try again."); setShaking(true); setTimeout(() => setShaking(false), 500); }
   }
 
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-20">
-      <div className={`w-full max-w-md transition-all ${shaking ? "animate-[shake_0.4s_ease]" : ""}`}>
-
-        {/* Icon */}
+      <div className={`w-full max-w-md ${shaking ? "animate-[shake_0.4s_ease]" : ""}`}>
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-[#00b8d4]/10 border border-[#00b8d4]/25 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Lock className="w-7 h-7 text-[#00b8d4]" />
@@ -75,108 +148,42 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
           <h1 className="text-3xl font-bold text-white mb-2">Admin Portal</h1>
           <p className="text-white/45 text-sm">Enter your password to access the dashboard.</p>
         </div>
-
-        {/* Form */}
         <form onSubmit={handleSubmit} className="bg-[#0d1627] border border-white/8 rounded-2xl p-8 space-y-5">
           <div>
             <label className="block text-sm font-bold text-white mb-2">Password</label>
             <div className="relative">
-              <input
-                type={show ? "text" : "password"}
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                placeholder="Enter admin password"
+              <input type={show ? "text" : "password"} value={password}
+                onChange={e => { setPassword(e.target.value); setError(""); }}
+                placeholder="Enter admin password" autoFocus
                 className="w-full bg-[#111827] border border-white/10 rounded-lg px-4 py-3 pr-11 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm"
-                autoFocus
               />
-              <button
-                type="button"
-                onClick={() => setShow(s => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 hover:text-white/70 transition-colors"
-              >
+              <button type="button" onClick={() => setShow(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 hover:text-white/70 transition-colors">
                 {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
             {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
           </div>
-
-          <button
-            type="submit"
-            className="w-full bg-[#00b8d4] hover:bg-[#00a0bb] text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Sign In
+          <button type="submit" className="w-full bg-[#00b8d4] hover:bg-[#00a0bb] text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+            <ShieldCheck className="w-4 h-4" /> Sign In
           </button>
-
-          <p className="text-center text-white/25 text-xs">
-            Hint: <span className="font-mono">admin123</span>
-          </p>
+          <p className="text-center text-white/25 text-xs">Hint: <span className="font-mono">admin123</span></p>
         </form>
       </div>
     </div>
   );
 }
 
-// ── Demo data ─────────────────────────────────────────────────────────────────
-
-const DEMO_SENDERS = [
-  { name: "James Hargreaves", company: "MFF Operations", email: "james@movefreightfast.com", phone: "+44 20 7946 0201" },
-  { name: "Sarah Okonkwo", company: "Global Trade Co.", email: "sarah@globaltrade.com", phone: "+61 2 9000 1234" },
-  { name: "Daniel Reeves", company: "Reeves Imports Pty Ltd", email: "d.reeves@reevesimports.au", phone: "+61 3 8800 5678" },
-];
-const DEMO_RECIPIENTS = [
-  { name: "Alice Chen", company: "Pacific Retail Group", email: "alice@pacificretail.com.au", phone: "+61 7 3200 9900", street: "12 Harbour View Rd", city: "Brisbane", state: "QLD", postcode: "4000", country: "Australia" },
-  { name: "Mark Thompson", company: "Thompson Engineering", email: "mark@thompsoneng.co.uk", phone: "+44 161 500 0022", street: "88 Industrial Way", city: "Manchester", state: "England", postcode: "M1 2AB", country: "United Kingdom" },
-  { name: "Nina Patel", company: "Patel Distribution Ltd", email: "nina@pateldist.nz", phone: "+64 9 888 3300", street: "44 Commerce Street", city: "Auckland", state: "AKL", postcode: "1010", country: "New Zealand" },
-];
-const DEMO_SERVICES = ["Road Freight", "Overnight Express", "International Air Freight", "Sea Freight", "Economy Ground"];
-const DEMO_GOODS = ["Electronic components", "Automotive parts", "Textile samples", "Medical supplies", "Industrial equipment", "Consumer goods"];
-
-function generateTestShipment() {
-  const sender = DEMO_SENDERS[Math.floor(Math.random() * DEMO_SENDERS.length)];
-  const recipient = DEMO_RECIPIENTS[Math.floor(Math.random() * DEMO_RECIPIENTS.length)];
-  const service = DEMO_SERVICES[Math.floor(Math.random() * DEMO_SERVICES.length)];
-  const goods = DEMO_GOODS[Math.floor(Math.random() * DEMO_GOODS.length)];
-  const weight = (Math.random() * 50 + 1).toFixed(1);
-  const id = `MFF${Math.floor(1000000000 + Math.random() * 9000000000)}`;
-  const now = new Date();
-  const eta = new Date(now.getTime() + (2 + Math.floor(Math.random() * 5)) * 86400000);
-  return {
-    trackingId: id,
-    bookedAt: now.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" }),
-    estDelivery: eta.toLocaleDateString("en-AU", { dateStyle: "medium" }),
-    sender,
-    recipient,
-    service,
-    weight: `${weight} kg`,
-    goods,
-    status: "Pending Pickup",
-  };
-}
-
-type TestShipment = ReturnType<typeof generateTestShipment>;
-
 // ── Test shipment modal ───────────────────────────────────────────────────────
 
 function TestShipmentModal({ shipment, onClose }: { shipment: TestShipment; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
-
-  function copy() {
-    navigator.clipboard.writeText(shipment.trackingId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
+  function copy() { navigator.clipboard.writeText(shipment.trackingId); setCopied(true); setTimeout(() => setCopied(false), 2000); }
 
   const rows: [string, string][] = [
-    ["Status", shipment.status],
-    ["Service", shipment.service],
-    ["Weight", shipment.weight],
-    ["Contents", shipment.goods],
-    ["Booked", shipment.bookedAt],
-    ["Est. Delivery", shipment.estDelivery],
+    ["Status", shipment.status], ["Service", shipment.service], ["Weight", shipment.weight],
+    ["Contents", shipment.goods], ["Booked", shipment.bookedAt], ["Est. Delivery", shipment.estDelivery],
     ["Sender", `${shipment.sender.name} — ${shipment.sender.company}`],
-    ["Sender Email", shipment.sender.email],
-    ["Sender Phone", shipment.sender.phone],
+    ["Sender Email", shipment.sender.email], ["Sender Phone", shipment.sender.phone],
     ["Recipient", `${shipment.recipient.name} — ${shipment.recipient.company}`],
     ["Recipient Address", `${shipment.recipient.street}, ${shipment.recipient.city} ${shipment.recipient.state} ${shipment.recipient.postcode}`],
     ["Destination Country", shipment.recipient.country],
@@ -185,19 +192,10 @@ function TestShipmentModal({ shipment, onClose }: { shipment: TestShipment; onCl
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="bg-[#0d1627] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
-
-        {/* Modal header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
-          <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-yellow-400" />
-            <h2 className="text-white font-bold text-lg">Test Shipment Generated</h2>
-          </div>
-          <button onClick={onClose} className="text-white/35 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2"><Zap className="w-5 h-5 text-yellow-400" /><h2 className="text-white font-bold text-lg">Test Shipment Generated</h2></div>
+          <button onClick={onClose} className="text-white/35 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
         </div>
-
-        {/* Tracking ID hero */}
         <div className="px-6 py-5 bg-[#111827]/60 border-b border-white/8">
           <div className="text-[#00b8d4] text-xs font-semibold uppercase tracking-widest mb-1">Tracking ID</div>
           <div className="flex items-center gap-3">
@@ -207,9 +205,7 @@ function TestShipmentModal({ shipment, onClose }: { shipment: TestShipment; onCl
             </button>
           </div>
         </div>
-
-        {/* Details */}
-        <div className="px-6 py-4 max-h-80 overflow-y-auto space-y-1">
+        <div className="px-6 py-4 max-h-72 overflow-y-auto space-y-1">
           {rows.map(([label, value]) => (
             <div key={label} className="flex justify-between items-start py-2 border-b border-white/5 last:border-0 text-sm gap-4">
               <span className="text-white/40 flex-shrink-0">{label}</span>
@@ -217,21 +213,191 @@ function TestShipmentModal({ shipment, onClose }: { shipment: TestShipment; onCl
             </div>
           ))}
         </div>
-
-        {/* Actions */}
         <div className="px-6 py-5 border-t border-white/8 flex gap-3">
-          <Link
-            href={`/track?id=${shipment.trackingId}`}
-            onClick={onClose}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#00b8d4] hover:bg-[#00a0bb] text-white font-semibold py-3 rounded-lg transition-colors text-sm"
-          >
+          <Link href={`/track?id=${shipment.trackingId}`} onClick={onClose} className="flex-1 flex items-center justify-center gap-2 bg-[#00b8d4] hover:bg-[#00a0bb] text-white font-semibold py-3 rounded-lg transition-colors text-sm">
             <Search className="w-4 h-4" /> Track It
           </Link>
+          <button onClick={onClose} className="flex-1 border border-white/15 hover:border-white/30 text-white/70 hover:text-white font-semibold py-3 rounded-lg transition-colors text-sm">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Edit Shipment modal ───────────────────────────────────────────────────────
+
+function EditShipmentModal({ shipment, onSave, onClose }: {
+  shipment: Shipment;
+  onSave: (updated: Shipment) => void;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState<Shipment>({ ...shipment });
+  const [saved, setSaved] = useState(false);
+
+  const set = (k: keyof Shipment) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setForm(f => ({ ...f, [k]: e.target.value }));
+
+  function handleSave() {
+    onSave(form);
+    setSaved(true);
+    setTimeout(() => { setSaved(false); onClose(); }, 800);
+  }
+
+  const Section = ({ title }: { title: string }) => (
+    <div className="text-[#00b8d4] text-xs font-bold uppercase tracking-widest mt-6 mb-3 pb-2 border-b border-white/8">{title}</div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-[#0d1627] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/8 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <PenLine className="w-5 h-5 text-[#00b8d4]" />
+            <div>
+              <h2 className="text-white font-bold text-lg">Edit Shipment</h2>
+              <p className="text-white/40 text-xs font-mono">{shipment.id}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white/35 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 px-6 py-2">
+
+          {/* ── Shipment Status ── */}
+          <Section title="Shipment Status" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Shipment Status</label>
+              <select className={selectCls} value={form.shipmentStatus} onChange={set("shipmentStatus")}>
+                {SHIPMENT_STATUSES.map(s => <option key={s} value={s} className="bg-[#0a1020]">{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Service Type</label>
+              <select className={selectCls} value={form.service} onChange={set("service")}>
+                {SERVICE_TYPES.map(s => <option key={s} value={s} className="bg-[#0a1020]">{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Shipment Mode</label>
+              <select className={selectCls} value={form.shipmentMode} onChange={set("shipmentMode")}>
+                {SHIPMENT_MODES.map(s => <option key={s} value={s} className="bg-[#0a1020]">{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Weight</label>
+              <input className={inputCls} placeholder="e.g. 12.5 kg" value={form.weight} onChange={set("weight")} />
+            </div>
+          </div>
+
+          {/* ── Payment ── */}
+          <Section title="Payment" />
+
+          {/* Payment status cards */}
+          <div className="mb-4">
+            <label className="block text-xs font-bold text-white/70 mb-2">Payment Status</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {PAYMENT_STATUSES.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, paymentStatus: opt.value }))}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold transition-all ${
+                    form.paymentStatus === opt.value
+                      ? `${opt.color} ring-2 ring-current ring-offset-1 ring-offset-[#0d1627]`
+                      : "border-white/8 text-white/40 hover:border-white/20 hover:text-white/70"
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5 flex-shrink-0" />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Payment Mode</label>
+              <select className={selectCls} value={form.paymentMode} onChange={set("paymentMode")}>
+                {PAYMENT_MODES.map(s => <option key={s} value={s} className="bg-[#0a1020]">{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Base Rate ($)</label>
+              <input type="number" min="0" step="0.01" className={inputCls} value={form.baseRate} onChange={set("baseRate")} />
+            </div>
+          </div>
+
+          {/* ── Sender ── */}
+          <Section title="Sender" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Name</label>
+              <input className={inputCls} value={form.sender} onChange={set("sender")} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Email</label>
+              <input type="email" className={inputCls} value={form.senderEmail} onChange={set("senderEmail")} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Phone</label>
+              <input className={inputCls} value={form.senderPhone} onChange={set("senderPhone")} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Address</label>
+              <input className={inputCls} value={form.senderAddress} onChange={set("senderAddress")} />
+            </div>
+          </div>
+
+          {/* ── Recipient ── */}
+          <Section title="Recipient" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Name</label>
+              <input className={inputCls} value={form.recipient} onChange={set("recipient")} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Email</label>
+              <input type="email" className={inputCls} value={form.recipientEmail} onChange={set("recipientEmail")} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Phone</label>
+              <input className={inputCls} value={form.recipientPhone} onChange={set("recipientPhone")} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Destination</label>
+              <input className={inputCls} value={form.dest} onChange={set("dest")} />
+            </div>
+          </div>
+
+          {/* ── Notes ── */}
+          <Section title="Internal Notes" />
+          <textarea
+            className={`${inputCls} resize-none`} rows={3}
+            placeholder="Add any internal notes about this shipment..."
+            value={form.notes} onChange={set("notes")}
+          />
+
+          <div className="pb-4" />
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex gap-3 px-6 py-5 border-t border-white/8 flex-shrink-0">
           <button
-            onClick={onClose}
-            className="flex-1 border border-white/15 hover:border-white/30 text-white/70 hover:text-white font-semibold py-3 rounded-lg transition-colors text-sm"
+            onClick={handleSave}
+            className={`flex-1 flex items-center justify-center gap-2 font-bold py-3 rounded-lg transition-all text-sm ${
+              saved ? "bg-green-600 text-white" : "bg-[#00b8d4] hover:bg-[#00a0bb] text-white"
+            }`}
           >
-            Close
+            {saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {saved ? "Saved!" : "Save Changes"}
+          </button>
+          <button onClick={onClose} className="flex-1 border border-white/15 hover:border-white/30 text-white/70 hover:text-white font-semibold py-3 rounded-lg transition-colors text-sm">
+            Cancel
           </button>
         </div>
       </div>
@@ -242,123 +408,132 @@ function TestShipmentModal({ shipment, onClose }: { shipment: TestShipment; onCl
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
+  const [shipments, setShipments]     = useState<Shipment[]>(INITIAL_SHIPMENTS);
   const [testShipment, setTestShipment] = useState<TestShipment | null>(null);
+  const [editingShipment, setEditing] = useState<Shipment | null>(null);
 
-  function handleGenerate() {
-    setTestShipment(generateTestShipment());
+  function handleSave(updated: Shipment) {
+    setShipments(prev => prev.map(s => s.id === updated.id ? updated : s));
+    setEditing(null);
   }
 
   return (
     <>
-      {testShipment && <TestShipmentModal shipment={testShipment} onClose={() => setTestShipment(null)} />}
-    <div className="flex-1 py-12 px-6">
-      <div className="container mx-auto max-w-5xl space-y-8">
+      {testShipment  && <TestShipmentModal shipment={testShipment} onClose={() => setTestShipment(null)} />}
+      {editingShipment && <EditShipmentModal shipment={editingShipment} onSave={handleSave} onClose={() => setEditing(null)} />}
 
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <span className="text-[#00b8d4] font-semibold text-sm uppercase tracking-widest block mb-1">Admin Portal</span>
-            <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+      <div className="flex-1 py-12 px-6">
+        <div className="container mx-auto max-w-5xl space-y-8">
+
+          {/* Header */}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <span className="text-[#00b8d4] font-semibold text-sm uppercase tracking-widest block mb-1">Admin Portal</span>
+              <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setTestShipment(generateTestShipment())}
+                className="flex items-center gap-2 bg-yellow-500/15 hover:bg-yellow-500/25 border border-yellow-500/30 text-yellow-400 font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm">
+                <Zap className="w-4 h-4" /> Generate Test ID
+              </button>
+              <button onClick={onLogout}
+                className="text-white/40 hover:text-white/70 text-sm font-medium border border-white/10 hover:border-white/20 px-4 py-2.5 rounded-lg transition-colors">
+                Sign Out
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleGenerate}
-              className="flex items-center gap-2 bg-yellow-500/15 hover:bg-yellow-500/25 border border-yellow-500/30 text-yellow-400 font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm"
-            >
-              <Zap className="w-4 h-4" /> Generate Test ID
-            </button>
-            <button
-              onClick={onLogout}
-              className="text-white/40 hover:text-white/70 text-sm font-medium border border-white/10 hover:border-white/20 px-4 py-2.5 rounded-lg transition-colors"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
 
-        {/* Quick stats */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {QUICK_STATS.map((s) => {
-            const Icon = s.icon;
-            return (
-              <div key={s.label} className="bg-[#0d1627] border border-white/8 rounded-xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <Icon className="w-5 h-5 text-[#00b8d4]" />
-                </div>
-                <div className="text-2xl font-bold text-white mb-1">{s.value}</div>
-                <div className="text-white/45 text-xs font-medium">{s.label}</div>
-                <div className="text-[#00b8d4]/70 text-xs mt-1">{s.change}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Admin actions */}
-        <div>
-          <h2 className="text-white font-bold text-lg mb-4">Quick Actions</h2>
-          <div className="grid md:grid-cols-3 gap-5">
-            {ADMIN_ACTIONS.map((action) => {
-              const Icon = action.icon;
+          {/* Quick stats */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {QUICK_STATS.map(s => {
+              const Icon = s.icon;
               return (
-                <div key={action.title} className="bg-[#0d1627] border border-white/8 rounded-xl p-6 flex flex-col">
-                  <div className="w-11 h-11 bg-[#00b8d4]/10 rounded-xl flex items-center justify-center mb-4">
-                    <Icon className="w-5 h-5 text-[#00b8d4]" />
-                  </div>
-                  <h3 className="text-white font-bold text-base mb-2">{action.title}</h3>
-                  <p className="text-white/45 text-sm leading-relaxed flex-1 mb-5">{action.description}</p>
-                  <Link
-                    href={action.href}
-                    className={`inline-flex items-center justify-center text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors ${action.accent}`}
-                  >
-                    {action.cta}
-                  </Link>
+                <div key={s.label} className="bg-[#0d1627] border border-white/8 rounded-xl p-5">
+                  <Icon className="w-5 h-5 text-[#00b8d4] mb-3" />
+                  <div className="text-2xl font-bold text-white mb-1">{s.value}</div>
+                  <div className="text-white/45 text-xs font-medium">{s.label}</div>
+                  <div className="text-[#00b8d4]/70 text-xs mt-1">{s.change}</div>
                 </div>
               );
             })}
           </div>
-        </div>
 
-        {/* Recent shipments placeholder */}
-        <div>
-          <h2 className="text-white font-bold text-lg mb-4">Recent Shipments</h2>
-          <div className="bg-[#0d1627] border border-white/8 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/8">
-                  {["Tracking ID", "Sender", "Destination", "Service", "Status"].map(col => (
-                    <th key={col} className="text-left text-white/40 font-semibold text-xs uppercase tracking-wider px-5 py-4">{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {[
-                  { id: "MFF3847291056", sender: "J. Hargreaves", dest: "Sydney NSW", service: "Overnight", status: "In Transit" },
-                  { id: "MFF9021847365", sender: "S. Okonkwo", dest: "Melbourne VIC", service: "Road Freight", status: "Delivered" },
-                  { id: "MFF5088840683", sender: "D. Reeves", dest: "Wyee NSW", service: "Road Freight", status: "Pending" },
-                  { id: "MFF7712039482", sender: "Acme Co.", dest: "Brisbane QLD", service: "Air Freight", status: "Out for Delivery" },
-                ].map(row => (
-                  <tr key={row.id} className="hover:bg-white/2 transition-colors">
-                    <td className="px-5 py-4 font-mono text-[#00b8d4] text-xs font-semibold">{row.id}</td>
-                    <td className="px-5 py-4 text-white/70">{row.sender}</td>
-                    <td className="px-5 py-4 text-white/70">{row.dest}</td>
-                    <td className="px-5 py-4 text-white/55">{row.service}</td>
-                    <td className="px-5 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        row.status === "Delivered" ? "bg-green-500/15 text-green-400"
-                        : row.status === "In Transit" ? "bg-[#00b8d4]/15 text-[#00b8d4]"
-                        : row.status === "Out for Delivery" ? "bg-yellow-500/15 text-yellow-400"
-                        : "bg-white/8 text-white/50"
-                      }`}>{row.status}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Admin actions */}
+          <div>
+            <h2 className="text-white font-bold text-lg mb-4">Quick Actions</h2>
+            <div className="grid md:grid-cols-3 gap-5">
+              {ADMIN_ACTIONS.map(action => {
+                const Icon = action.icon;
+                return (
+                  <div key={action.title} className="bg-[#0d1627] border border-white/8 rounded-xl p-6 flex flex-col">
+                    <div className="w-11 h-11 bg-[#00b8d4]/10 rounded-xl flex items-center justify-center mb-4">
+                      <Icon className="w-5 h-5 text-[#00b8d4]" />
+                    </div>
+                    <h3 className="text-white font-bold text-base mb-2">{action.title}</h3>
+                    <p className="text-white/45 text-sm leading-relaxed flex-1 mb-5">{action.description}</p>
+                    <Link href={action.href} className={`inline-flex items-center justify-center text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors ${action.accent}`}>
+                      {action.cta}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
+          {/* Shipments table */}
+          <div>
+            <h2 className="text-white font-bold text-lg mb-4">Shipments</h2>
+            <div className="bg-[#0d1627] border border-white/8 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/8">
+                      {["Tracking ID", "Sender", "Recipient / Destination", "Service", "Status", "Payment", ""].map(col => (
+                        <th key={col} className="text-left text-white/40 font-semibold text-xs uppercase tracking-wider px-4 py-4 whitespace-nowrap">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {shipments.map(row => (
+                      <tr key={row.id} className="hover:bg-white/2 transition-colors">
+                        <td className="px-4 py-4 font-mono text-[#00b8d4] text-xs font-semibold whitespace-nowrap">{row.id}</td>
+                        <td className="px-4 py-4">
+                          <div className="text-white/80 font-medium text-xs">{row.sender}</div>
+                          <div className="text-white/35 text-xs">{row.senderEmail}</div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="text-white/80 font-medium text-xs">{row.recipient}</div>
+                          <div className="text-white/35 text-xs max-w-[180px] truncate">{row.dest}</div>
+                        </td>
+                        <td className="px-4 py-4 text-white/55 text-xs whitespace-nowrap">{row.service}</td>
+                        <td className="px-4 py-4">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${statusColor(row.shipmentStatus)}`}>
+                            {row.shipmentStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${paymentStyle(row.paymentStatus)}`}>
+                            {paymentLabel(row.paymentStatus)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <button
+                            onClick={() => setEditing(row)}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-white/50 hover:text-[#00b8d4] border border-white/10 hover:border-[#00b8d4]/40 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                          >
+                            <PenLine className="w-3.5 h-3.5" /> Edit
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
-    </div>
     </>
   );
 }
@@ -367,12 +542,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
 export function Admin() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === "1");
-
-  function logout() {
-    sessionStorage.removeItem(SESSION_KEY);
-    setAuthed(false);
-  }
-
+  function logout() { sessionStorage.removeItem(SESSION_KEY); setAuthed(false); }
   return (
     <div className="flex-1 flex flex-col bg-[#080d1a] pt-20">
       {authed ? <Dashboard onLogout={logout} /> : <LoginScreen onLogin={() => setAuthed(true)} />}
