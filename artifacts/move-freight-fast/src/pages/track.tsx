@@ -12,7 +12,9 @@ import {
   Bell,
   Info,
   Globe,
+  AlertCircle,
 } from "lucide-react";
+import { getShipments } from "../lib/shipmentStore";
 
 // Lazy-load the Leaflet map so it never runs at module-eval time in production.
 // Leaflet accesses window/document on import, which crashes during SSR/build.
@@ -84,8 +86,131 @@ const MOCK_SHIPMENT = {
   ],
 };
 
+// ── Store lookup ─────────────────────────────────────────────────────────────
+
+interface ShipmentDisplay {
+  trackingId: string;
+  receiptDate: string;
+  status: string;
+  paymentStatus: string;
+  paymentMode: string;
+  baseShippingRate: number;
+  weightCharges: number;
+  insuranceFee: number;
+  statusLocation: string;
+  progress: number;
+  senderName: string;
+  senderContact: string;
+  senderEmail: string;
+  senderAddress: string;
+  receiverName: string;
+  receiverContact: string;
+  receiverEmail: string;
+  receiverAddress: string;
+  origin: string;
+  destination: string;
+  estDelivery: string;
+  weight: string;
+  serviceType: string;
+  shipmentMode: string;
+  carrier: string;
+  dimensions: string;
+  insurance: string;
+  signatureRequired: string;
+  originCoords: [number, number];
+  currentCoords: [number, number];
+  destinationCoords: [number, number];
+  timeline: Array<{
+    date: string;
+    time: string | null;
+    event: string;
+    location: string;
+    note: string | null;
+    status: string;
+  }>;
+}
+
+function progressFromStatus(status: string): number {
+  const s = status.toLowerCase();
+  if (s.includes("delivered")) return 100;
+  if (s.includes("out for delivery")) return 75;
+  if (s.includes("in transit") || s.includes("transit")) return 50;
+  if (s.includes("picked up") || s.includes("pickup")) return 25;
+  return 10; // Pending / unknown
+}
+
+function storedToDisplay(s: ReturnType<typeof getShipments>[number]): ShipmentDisplay {
+  const progress = progressFromStatus(s.shipmentStatus);
+  const now = new Date();
+  const estDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const estDelivery = estDate.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+
+  return {
+    trackingId: s.id,
+    receiptDate: s.createdAt,
+    status: s.shipmentStatus,
+    paymentStatus: s.paymentStatus,
+    paymentMode: s.paymentMode,
+    baseShippingRate: s.baseRate,
+    weightCharges: 0,
+    insuranceFee: 0,
+    statusLocation: s.dest,
+    progress,
+    senderName: s.sender,
+    senderContact: s.senderPhone,
+    senderEmail: s.senderEmail,
+    senderAddress: s.senderAddress,
+    receiverName: s.recipient,
+    receiverContact: s.recipientPhone,
+    receiverEmail: s.recipientEmail,
+    receiverAddress: s.dest,
+    origin: s.senderAddress,
+    destination: s.dest,
+    estDelivery,
+    weight: s.weight,
+    serviceType: s.service,
+    shipmentMode: s.shipmentMode,
+    carrier: "MoveFreight",
+    dimensions: "—",
+    insurance: "$0.00",
+    signatureRequired: "—",
+    originCoords: [-33.8688, 151.2093] as [number, number],
+    currentCoords: [-33.8688, 151.2093] as [number, number],
+    destinationCoords: [-33.8688, 151.2093] as [number, number],
+    timeline: [
+      {
+        date: s.createdAt,
+        time: null,
+        event: s.shipmentStatus,
+        location: s.senderAddress,
+        note: s.notes || null,
+        status: "active",
+      },
+      {
+        date: s.createdAt,
+        time: null,
+        event: "Shipment information received",
+        location: "System",
+        note: null,
+        status: "done",
+      },
+    ],
+  };
+}
+
+function lookupShipment(id: string): ShipmentDisplay | null {
+  const trimmed = id.trim();
+  if (!trimmed) return null;
+  // Check hardcoded demo shipment
+  if (trimmed === MOCK_SHIPMENT.trackingId) return MOCK_SHIPMENT;
+  // Check localStorage store
+  const stored = getShipments().find(s => s.id === trimmed);
+  if (stored) return storedToDisplay(stored);
+  return null;
+}
+
 // ── Receipt generator ────────────────────────────────────────────────────────
-function buildReceiptHTML(data: typeof MOCK_SHIPMENT): string {
+function buildReceiptHTML(data: ShipmentDisplay): string {
   const total = (data.baseShippingRate + data.weightCharges + data.insuranceFee).toFixed(2);
   const isPaid = data.paymentStatus === "PAID";
 
@@ -221,7 +346,7 @@ function buildReceiptHTML(data: typeof MOCK_SHIPMENT): string {
 </html>`;
 }
 
-function downloadReceipt(data: typeof MOCK_SHIPMENT) {
+function downloadReceipt(data: ShipmentDisplay) {
   const html = buildReceiptHTML(data);
   const blob = new Blob([html], { type: "text/html" });
   const url  = URL.createObjectURL(blob);
@@ -246,7 +371,7 @@ function getStepIndex(progress: number) {
 
 // ── Subcomponents ───────────────────────────────────────────────────────────
 
-function ShipmentResult({ data }: { data: typeof MOCK_SHIPMENT }) {
+function ShipmentResult({ data }: { data: ShipmentDisplay }) {
   const stepIdx = getStepIndex(data.progress);
 
   function handleDownload() {
@@ -477,14 +602,14 @@ function ShipmentResult({ data }: { data: typeof MOCK_SHIPMENT }) {
 export function Track() {
   const [trackingId, setTrackingId] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [result, setResult] = useState<typeof MOCK_SHIPMENT | null>(null);
+  const [result, setResult] = useState<ShipmentDisplay | null>(null);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("id");
     if (id) {
       setTrackingId(id);
       setSubmitted(true);
-      setResult(MOCK_SHIPMENT);
+      setResult(lookupShipment(id));
     }
   }, []);
 
@@ -492,8 +617,7 @@ export function Track() {
     e.preventDefault();
     if (!trackingId.trim()) return;
     setSubmitted(true);
-    // Return mock data for any input (demo)
-    setResult({ ...MOCK_SHIPMENT, trackingId: trackingId.trim() });
+    setResult(lookupShipment(trackingId));
   }
 
   return (
@@ -543,6 +667,20 @@ export function Track() {
 
           {/* Results */}
           {submitted && result && <ShipmentResult data={result} />}
+
+          {/* Not found */}
+          {submitted && !result && (
+            <div className="bg-[#0d1627] border border-white/8 rounded-2xl p-10 text-center">
+              <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-7 h-7 text-red-400" />
+              </div>
+              <h3 className="text-white font-bold text-lg mb-2">No shipment found</h3>
+              <p className="text-white/45 text-sm max-w-sm mx-auto">
+                We couldn't find a shipment matching <span className="text-white/70 font-semibold">{trackingId}</span>.
+                Double-check the tracking ID and try again.
+              </p>
+            </div>
+          )}
 
           {/* Empty state */}
           {!submitted && (
