@@ -6,6 +6,7 @@ import {
   ChevronRight, ChevronLeft, CheckCircle2,
   Truck, Copy, Search, ArrowRight,
 } from "lucide-react";
+import { addShipment } from "../lib/shipmentStore";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -358,13 +359,32 @@ export function CreateShipment() {
 
   function handleSubmit() {
     const now = new Date();
-    setResult({
-      trackingId: generateTrackingId(),
-      createdAt: now.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" }),
-      sender,
-      recipient,
-      pkg,
+    const trackingId = generateTrackingId();
+    const createdAt = now.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" });
+
+    // Persist to shared store so admin page can display it
+    addShipment({
+      id: trackingId,
+      createdAt,
+      sender: sender.name,
+      senderEmail: sender.email,
+      senderPhone: sender.phone,
+      senderAddress: `${sender.street}, ${sender.city} ${sender.state} ${sender.postcode}, ${sender.country}`,
+      recipient: recipient.name,
+      recipientEmail: recipient.email,
+      recipientPhone: recipient.phone,
+      dest: `${recipient.street}, ${recipient.city} ${recipient.state} ${recipient.postcode}, ${recipient.country}`,
+      service: pkg.serviceType,
+      weight: pkg.weight ? `${pkg.weight} kg` : "—",
+      shipmentMode: "Land Freight",
+      shipmentStatus: "Pending Pickup",
+      paymentStatus: "UNPAID",
+      paymentMode: "Others",
+      baseRate: 0,
+      notes: pkg.description,
     });
+
+    setResult({ trackingId, createdAt, sender, recipient, pkg });
   }
 
   function handleNew() {

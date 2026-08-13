@@ -1,46 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import {
   Lock, Eye, EyeOff, ShieldCheck,
   Package, Search, BarChart3, Users, Truck, Settings,
-  Zap, Copy, CheckCircle2, X, PenLine, Save, CreditCard,
+  Zap, Copy, CheckCircle2, X, PenLine, Save, CreditCard, Trash2,
 } from "lucide-react";
+import {
+  type StoredShipment,
+  seedStore, getShipments, updateShipment, deleteShipment,
+} from "../lib/shipmentStore";
 
 const ADMIN_PASSWORD = "admin123";
-const SESSION_KEY = "mff_admin_auth";
+const SESSION_KEY    = "mff_admin_auth";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Seed data (demo rows shown on first ever visit) ───────────────────────────
 
-interface Shipment {
-  id: string;
-  sender: string;
-  senderEmail: string;
-  senderPhone: string;
-  senderAddress: string;
-  recipient: string;
-  recipientEmail: string;
-  recipientPhone: string;
-  dest: string;
-  service: string;
-  weight: string;
-  shipmentMode: string;
-  shipmentStatus: string;
-  paymentStatus: string;
-  paymentMode: string;
-  baseRate: number;
-  notes: string;
-}
+const SEED_SHIPMENTS: StoredShipment[] = [
+  { id: "MFF3847291056", createdAt: "10 Aug 2026, 9:15 am",  sender: "J. Hargreaves", senderEmail: "james@movefreightfast.com",  senderPhone: "+44 20 7946 0201", senderAddress: "12 Commerce Way, London EC1A 1BB",     recipient: "Alice Chen",    recipientEmail: "alice@pacificretail.com.au", recipientPhone: "+61 7 3200 9900",  dest: "12 Harbour View Rd, Brisbane QLD 4000",         service: "Overnight Express",          weight: "8.5 kg",  shipmentMode: "Air Freight",  shipmentStatus: "In Transit",       paymentStatus: "PAID",             paymentMode: "Bank Transfer", baseRate: 120, notes: "" },
+  { id: "MFF9021847365", createdAt: "9 Aug 2026, 2:40 pm",   sender: "S. Okonkwo",    senderEmail: "sarah@globaltrade.com",        senderPhone: "+61 2 9000 1234", senderAddress: "88 George St, Sydney NSW 2000",        recipient: "Mark Thompson", recipientEmail: "mark@thompsoneng.co.uk",     recipientPhone: "+44 161 500 0022", dest: "88 Industrial Way, Manchester M1 2AB",          service: "Road Freight",               weight: "32.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Delivered",        paymentStatus: "PAID",             paymentMode: "Invoice",       baseRate: 85,  notes: "Fragile — handle with care" },
+  { id: "MFF5088840683", createdAt: "9 Aug 2026, 11:02 am",  sender: "D. Reeves",     senderEmail: "d.reeves@reevesimports.au",    senderPhone: "+61 3 8800 5678", senderAddress: "3175 Dandenong Vic Australia",         recipient: "William Evans", recipientEmail: "william@binalong.com.au",    recipientPhone: "0492071494",       dest: "422 wyee farms road, wyee NSW 2259",            service: "Road Freight",               weight: "12.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Pending Pickup",   paymentStatus: "UNPAID",           paymentMode: "Others",        baseRate: 50,  notes: "ARB bullbar and drivers side guard" },
+  { id: "MFF7712039482", createdAt: "8 Aug 2026, 4:18 pm",   sender: "Acme Co.",      senderEmail: "dispatch@acmeco.com.au",       senderPhone: "+61 2 8000 3300", senderAddress: "99 Parramatta Rd, Sydney NSW 2150",    recipient: "Nina Patel",    recipientEmail: "nina@pateldist.nz",          recipientPhone: "+64 9 888 3300",   dest: "44 Commerce Street, Auckland 1010",             service: "International Air Freight",  weight: "5.2 kg",  shipmentMode: "Air Freight",  shipmentStatus: "Out for Delivery", paymentStatus: "DEPOSIT_RECEIVED", paymentMode: "Bank Transfer", baseRate: 210, notes: "" },
+];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const PAYMENT_STATUSES = [
-  { value: "UNPAID",           label: "Unpaid",            color: "text-red-400 bg-red-500/10 border-red-500/30" },
-  { value: "PENDING_PAYMENT",  label: "Pending Payment",   color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" },
-  { value: "DEPOSIT_RECEIVED", label: "Deposit Received",  color: "text-blue-400 bg-blue-500/10 border-blue-500/30" },
-  { value: "PARTIALLY_PAID",   label: "Partially Paid",    color: "text-orange-400 bg-orange-500/10 border-orange-500/30" },
-  { value: "PAID",             label: "Paid",              color: "text-green-400 bg-green-500/10 border-green-500/30" },
-  { value: "REFUNDED",         label: "Refunded",          color: "text-purple-400 bg-purple-500/10 border-purple-500/30" },
-  { value: "WAIVED",           label: "Waived",            color: "text-white/50 bg-white/5 border-white/10" },
+  { value: "UNPAID",           label: "Unpaid",           color: "text-red-400 bg-red-500/10 border-red-500/30" },
+  { value: "PENDING_PAYMENT",  label: "Pending Payment",  color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" },
+  { value: "DEPOSIT_RECEIVED", label: "Deposit Received", color: "text-blue-400 bg-blue-500/10 border-blue-500/30" },
+  { value: "PARTIALLY_PAID",   label: "Partially Paid",   color: "text-orange-400 bg-orange-500/10 border-orange-500/30" },
+  { value: "PAID",             label: "Paid",             color: "text-green-400 bg-green-500/10 border-green-500/30" },
+  { value: "REFUNDED",         label: "Refunded",         color: "text-purple-400 bg-purple-500/10 border-purple-500/30" },
+  { value: "WAIVED",           label: "Waived",           color: "text-white/50 bg-white/5 border-white/10" },
 ];
 
 const SHIPMENT_STATUSES = ["Pending Pickup", "Picked Up", "In Transit", "Out for Delivery", "Delivered", "On Hold", "Returned"];
@@ -56,19 +47,15 @@ const QUICK_STATS = [
 ];
 
 const ADMIN_ACTIONS = [
-  { icon: Package,  title: "Create Shipment",  description: "Book a new freight shipment and generate a tracking ID.", href: "/ship",     cta: "Create Shipment", accent: "bg-[#00b8d4] hover:bg-[#00a0bb]" },
-  { icon: Search,   title: "Track Shipment",   description: "Look up live status and location for any shipment.",      href: "/track",    cta: "Track Shipment",  accent: "bg-[#1e3a8a] hover:bg-[#1e40af]" },
-  { icon: Settings, title: "Manage Services",  description: "Review and update available freight service offerings.",  href: "/services", cta: "View Services",   accent: "bg-[#374151] hover:bg-[#4b5563]" },
+  { icon: Package,  title: "Create Shipment", description: "Book a new freight shipment and generate a tracking ID.", href: "/ship",     cta: "Create Shipment", accent: "bg-[#00b8d4] hover:bg-[#00a0bb]" },
+  { icon: Search,   title: "Track Shipment",  description: "Look up live status and location for any shipment.",      href: "/track",    cta: "Track Shipment",  accent: "bg-[#1e3a8a] hover:bg-[#1e40af]" },
+  { icon: Settings, title: "Manage Services", description: "Review and update available freight service offerings.",  href: "/services", cta: "View Services",   accent: "bg-[#374151] hover:bg-[#4b5563]" },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function paymentStyle(value: string) {
-  return PAYMENT_STATUSES.find(p => p.value === value)?.color ?? "text-white/50 bg-white/5 border-white/10";
-}
-function paymentLabel(value: string) {
-  return PAYMENT_STATUSES.find(p => p.value === value)?.label ?? value;
-}
+function paymentStyle(v: string) { return PAYMENT_STATUSES.find(p => p.value === v)?.color ?? "text-white/50 bg-white/5 border-white/10"; }
+function paymentLabel(v: string) { return PAYMENT_STATUSES.find(p => p.value === v)?.label ?? v; }
 
 function statusColor(s: string) {
   if (s === "Delivered")        return "bg-green-500/15 text-green-400";
@@ -78,29 +65,20 @@ function statusColor(s: string) {
   return "bg-white/8 text-white/50";
 }
 
-const inputCls = "w-full bg-[#0a1020] border border-white/10 rounded-lg px-3 py-2.5 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm";
+const inputCls  = "w-full bg-[#0a1020] border border-white/10 rounded-lg px-3 py-2.5 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm";
 const selectCls = `${inputCls} appearance-none cursor-pointer`;
 
-// ── Initial shipments data ────────────────────────────────────────────────────
+// ── Demo data for test-ID generator ──────────────────────────────────────────
 
-const INITIAL_SHIPMENTS: Shipment[] = [
-  { id: "MFF3847291056", sender: "J. Hargreaves", senderEmail: "james@movefreightfast.com", senderPhone: "+44 20 7946 0201", senderAddress: "12 Commerce Way, London EC1A 1BB", recipient: "Alice Chen", recipientEmail: "alice@pacificretail.com.au", recipientPhone: "+61 7 3200 9900", dest: "12 Harbour View Rd, Brisbane QLD 4000", service: "Overnight Express", weight: "8.5 kg", shipmentMode: "Air Freight", shipmentStatus: "In Transit", paymentStatus: "PAID", paymentMode: "Bank Transfer", baseRate: 120, notes: "" },
-  { id: "MFF9021847365", sender: "S. Okonkwo",    senderEmail: "sarah@globaltrade.com",     senderPhone: "+61 2 9000 1234", senderAddress: "88 George St, Sydney NSW 2000",      recipient: "Mark Thompson", recipientEmail: "mark@thompsoneng.co.uk", recipientPhone: "+44 161 500 0022", dest: "88 Industrial Way, Manchester M1 2AB", service: "Road Freight", weight: "32.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Delivered", paymentStatus: "PAID", paymentMode: "Invoice", baseRate: 85, notes: "Fragile — handle with care" },
-  { id: "MFF5088840683", sender: "D. Reeves",     senderEmail: "d.reeves@reevesimports.au", senderPhone: "+61 3 8800 5678", senderAddress: "3175 Dandenong Vic Australia",        recipient: "William Evans", recipientEmail: "william@binalong.com.au", recipientPhone: "0492071494", dest: "422 wyee farms road, wyee NSW 2259", service: "Road Freight", weight: "12.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Pending Pickup", paymentStatus: "UNPAID", paymentMode: "Others", baseRate: 50, notes: "ARB bullbar and drivers side guard" },
-  { id: "MFF7712039482", sender: "Acme Co.",      senderEmail: "dispatch@acmeco.com.au",    senderPhone: "+61 2 8000 3300", senderAddress: "99 Parramatta Rd, Sydney NSW 2150",  recipient: "Nina Patel", recipientEmail: "nina@pateldist.nz", recipientPhone: "+64 9 888 3300", dest: "44 Commerce Street, Auckland 1010", service: "International Air Freight", weight: "5.2 kg", shipmentMode: "Air Freight", shipmentStatus: "Out for Delivery", paymentStatus: "DEPOSIT_RECEIVED", paymentMode: "Bank Transfer", baseRate: 210, notes: "" },
-];
-
-// ── Demo data ─────────────────────────────────────────────────────────────────
-
-const DEMO_SENDERS    = [
-  { name: "James Hargreaves", company: "MFF Operations",       email: "james@movefreightfast.com", phone: "+44 20 7946 0201" },
-  { name: "Sarah Okonkwo",    company: "Global Trade Co.",      email: "sarah@globaltrade.com",     phone: "+61 2 9000 1234" },
-  { name: "Daniel Reeves",    company: "Reeves Imports Pty Ltd",email: "d.reeves@reevesimports.au", phone: "+61 3 8800 5678" },
+const DEMO_SENDERS = [
+  { name: "James Hargreaves", company: "MFF Operations",        email: "james@movefreightfast.com", phone: "+44 20 7946 0201" },
+  { name: "Sarah Okonkwo",    company: "Global Trade Co.",       email: "sarah@globaltrade.com",     phone: "+61 2 9000 1234" },
+  { name: "Daniel Reeves",    company: "Reeves Imports Pty Ltd", email: "d.reeves@reevesimports.au", phone: "+61 3 8800 5678" },
 ];
 const DEMO_RECIPIENTS = [
-  { name: "Alice Chen",    company: "Pacific Retail Group",   email: "alice@pacificretail.com.au", phone: "+61 7 3200 9900", street: "12 Harbour View Rd",  city: "Brisbane",  state: "QLD",     postcode: "4000", country: "Australia" },
-  { name: "Mark Thompson", company: "Thompson Engineering",   email: "mark@thompsoneng.co.uk",     phone: "+44 161 500 0022", street: "88 Industrial Way",   city: "Manchester",state: "England", postcode: "M1 2AB",country: "United Kingdom" },
-  { name: "Nina Patel",    company: "Patel Distribution Ltd", email: "nina@pateldist.nz",          phone: "+64 9 888 3300",  street: "44 Commerce Street",  city: "Auckland",  state: "AKL",     postcode: "1010", country: "New Zealand" },
+  { name: "Alice Chen",    company: "Pacific Retail Group",   email: "alice@pacificretail.com.au", phone: "+61 7 3200 9900",  street: "12 Harbour View Rd",  city: "Brisbane",  state: "QLD",     postcode: "4000",   country: "Australia" },
+  { name: "Mark Thompson", company: "Thompson Engineering",   email: "mark@thompsoneng.co.uk",     phone: "+44 161 500 0022", street: "88 Industrial Way",   city: "Manchester",state: "England", postcode: "M1 2AB", country: "United Kingdom" },
+  { name: "Nina Patel",    company: "Patel Distribution Ltd", email: "nina@pateldist.nz",          phone: "+64 9 888 3300",   street: "44 Commerce Street",  city: "Auckland",  state: "AKL",     postcode: "1010",   country: "New Zealand" },
 ];
 const DEMO_SERVICES = ["Road Freight", "Overnight Express", "International Air Freight", "Sea Freight", "Economy Ground"];
 const DEMO_GOODS    = ["Electronic components", "Automotive parts", "Textile samples", "Medical supplies", "Industrial equipment", "Consumer goods"];
@@ -115,11 +93,9 @@ function generateTestShipment() {
   const now       = new Date();
   const eta       = new Date(now.getTime() + (2 + Math.floor(Math.random() * 5)) * 86400000);
   return {
-    trackingId:  id,
-    bookedAt:    now.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" }),
+    trackingId:  id, bookedAt: now.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" }),
     estDelivery: eta.toLocaleDateString("en-AU", { dateStyle: "medium" }),
-    sender, recipient, service, weight: `${weight} kg`, goods,
-    status: "Pending Pickup",
+    sender, recipient, service, weight: `${weight} kg`, goods, status: "Pending Pickup",
   };
 }
 type TestShipment = ReturnType<typeof generateTestShipment>;
@@ -128,9 +104,9 @@ type TestShipment = ReturnType<typeof generateTestShipment>;
 
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
-  const [error, setError] = useState("");
-  const [shaking, setShaking] = useState(false);
+  const [show, setShow]         = useState(false);
+  const [error, setError]       = useState("");
+  const [shaking, setShaking]   = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -152,9 +128,9 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
           <div>
             <label className="block text-sm font-bold text-white mb-2">Password</label>
             <div className="relative">
-              <input type={show ? "text" : "password"} value={password}
+              <input type={show ? "text" : "password"} value={password} autoFocus
                 onChange={e => { setPassword(e.target.value); setError(""); }}
-                placeholder="Enter admin password" autoFocus
+                placeholder="Enter admin password"
                 className="w-full bg-[#111827] border border-white/10 rounded-lg px-4 py-3 pr-11 text-white placeholder:text-white/25 focus:outline-none focus:border-[#00b8d4] transition-colors text-sm"
               />
               <button type="button" onClick={() => setShow(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 hover:text-white/70 transition-colors">
@@ -227,18 +203,19 @@ function TestShipmentModal({ shipment, onClose }: { shipment: TestShipment; onCl
 // ── Edit Shipment modal ───────────────────────────────────────────────────────
 
 function EditShipmentModal({ shipment, onSave, onClose }: {
-  shipment: Shipment;
-  onSave: (updated: Shipment) => void;
+  shipment: StoredShipment;
+  onSave: (updated: StoredShipment) => void;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<Shipment>({ ...shipment });
+  const [form, setForm] = useState<StoredShipment>({ ...shipment });
   const [saved, setSaved] = useState(false);
 
-  const set = (k: keyof Shipment) =>
+  const set = (k: keyof StoredShipment) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }));
 
   function handleSave() {
+    updateShipment(form);
     onSave(form);
     setSaved(true);
     setTimeout(() => { setSaved(false); onClose(); }, 800);
@@ -267,7 +244,6 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 px-6 py-2">
 
-          {/* ── Shipment Status ── */}
           <Section title="Shipment Status" />
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -294,17 +270,12 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
             </div>
           </div>
 
-          {/* ── Payment ── */}
           <Section title="Payment" />
-
-          {/* Payment status cards */}
           <div className="mb-4">
             <label className="block text-xs font-bold text-white/70 mb-2">Payment Status</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {PAYMENT_STATUSES.map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
+                <button key={opt.value} type="button"
                   onClick={() => setForm(f => ({ ...f, paymentStatus: opt.value }))}
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold transition-all ${
                     form.paymentStatus === opt.value
@@ -312,13 +283,11 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
                       : "border-white/8 text-white/40 hover:border-white/20 hover:text-white/70"
                   }`}
                 >
-                  <CreditCard className="w-3.5 h-3.5 flex-shrink-0" />
-                  {opt.label}
+                  <CreditCard className="w-3.5 h-3.5 flex-shrink-0" />{opt.label}
                 </button>
               ))}
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-white/70 mb-1.5">Payment Mode</label>
@@ -332,52 +301,24 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
             </div>
           </div>
 
-          {/* ── Sender ── */}
           <Section title="Sender" />
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-white/70 mb-1.5">Name</label>
-              <input className={inputCls} value={form.sender} onChange={set("sender")} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-white/70 mb-1.5">Email</label>
-              <input type="email" className={inputCls} value={form.senderEmail} onChange={set("senderEmail")} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-white/70 mb-1.5">Phone</label>
-              <input className={inputCls} value={form.senderPhone} onChange={set("senderPhone")} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-white/70 mb-1.5">Address</label>
-              <input className={inputCls} value={form.senderAddress} onChange={set("senderAddress")} />
-            </div>
+            <div><label className="block text-xs font-bold text-white/70 mb-1.5">Name</label><input className={inputCls} value={form.sender} onChange={set("sender")} /></div>
+            <div><label className="block text-xs font-bold text-white/70 mb-1.5">Email</label><input type="email" className={inputCls} value={form.senderEmail} onChange={set("senderEmail")} /></div>
+            <div><label className="block text-xs font-bold text-white/70 mb-1.5">Phone</label><input className={inputCls} value={form.senderPhone} onChange={set("senderPhone")} /></div>
+            <div><label className="block text-xs font-bold text-white/70 mb-1.5">Address</label><input className={inputCls} value={form.senderAddress} onChange={set("senderAddress")} /></div>
           </div>
 
-          {/* ── Recipient ── */}
           <Section title="Recipient" />
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-white/70 mb-1.5">Name</label>
-              <input className={inputCls} value={form.recipient} onChange={set("recipient")} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-white/70 mb-1.5">Email</label>
-              <input type="email" className={inputCls} value={form.recipientEmail} onChange={set("recipientEmail")} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-white/70 mb-1.5">Phone</label>
-              <input className={inputCls} value={form.recipientPhone} onChange={set("recipientPhone")} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-white/70 mb-1.5">Destination</label>
-              <input className={inputCls} value={form.dest} onChange={set("dest")} />
-            </div>
+            <div><label className="block text-xs font-bold text-white/70 mb-1.5">Name</label><input className={inputCls} value={form.recipient} onChange={set("recipient")} /></div>
+            <div><label className="block text-xs font-bold text-white/70 mb-1.5">Email</label><input type="email" className={inputCls} value={form.recipientEmail} onChange={set("recipientEmail")} /></div>
+            <div><label className="block text-xs font-bold text-white/70 mb-1.5">Phone</label><input className={inputCls} value={form.recipientPhone} onChange={set("recipientPhone")} /></div>
+            <div><label className="block text-xs font-bold text-white/70 mb-1.5">Destination</label><input className={inputCls} value={form.dest} onChange={set("dest")} /></div>
           </div>
 
-          {/* ── Notes ── */}
           <Section title="Internal Notes" />
-          <textarea
-            className={`${inputCls} resize-none`} rows={3}
+          <textarea className={`${inputCls} resize-none`} rows={3}
             placeholder="Add any internal notes about this shipment..."
             value={form.notes} onChange={set("notes")}
           />
@@ -385,13 +326,10 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
           <div className="pb-4" />
         </div>
 
-        {/* Footer actions */}
+        {/* Footer */}
         <div className="flex gap-3 px-6 py-5 border-t border-white/8 flex-shrink-0">
-          <button
-            onClick={handleSave}
-            className={`flex-1 flex items-center justify-center gap-2 font-bold py-3 rounded-lg transition-all text-sm ${
-              saved ? "bg-green-600 text-white" : "bg-[#00b8d4] hover:bg-[#00a0bb] text-white"
-            }`}
+          <button onClick={handleSave}
+            className={`flex-1 flex items-center justify-center gap-2 font-bold py-3 rounded-lg transition-all text-sm ${saved ? "bg-green-600 text-white" : "bg-[#00b8d4] hover:bg-[#00a0bb] text-white"}`}
           >
             {saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saved ? "Saved!" : "Save Changes"}
@@ -405,25 +343,62 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
   );
 }
 
+// ── Delete button with two-step confirm ───────────────────────────────────────
+
+function DeleteButton({ onConfirm }: { onConfirm: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+
+  function handleClick() {
+    if (confirming) { onConfirm(); }
+    else { setConfirming(true); setTimeout(() => setConfirming(false), 3000); }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      title={confirming ? "Click again to confirm delete" : "Delete shipment"}
+      className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all whitespace-nowrap ${
+        confirming
+          ? "bg-red-500/15 border-red-500/50 text-red-400 hover:bg-red-500/25"
+          : "border-white/10 text-white/40 hover:border-red-500/40 hover:text-red-400"
+      }`}
+    >
+      <Trash2 className="w-3.5 h-3.5" />
+      {confirming ? "Confirm?" : "Delete"}
+    </button>
+  );
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
-  const [shipments, setShipments]     = useState<Shipment[]>(INITIAL_SHIPMENTS);
+  const [shipments, setShipments]       = useState<StoredShipment[]>([]);
   const [testShipment, setTestShipment] = useState<TestShipment | null>(null);
-  const [editingShipment, setEditing] = useState<Shipment | null>(null);
+  const [editing, setEditing]           = useState<StoredShipment | null>(null);
 
-  function handleSave(updated: Shipment) {
-    setShipments(prev => prev.map(s => s.id === updated.id ? updated : s));
+  // Seed demo data on first visit; always load from store
+  useEffect(() => {
+    seedStore(SEED_SHIPMENTS);
+    setShipments(getShipments());
+  }, []);
+
+  function handleSave(updated: StoredShipment) {
+    setShipments(getShipments());
     setEditing(null);
+  }
+
+  function handleDelete(id: string) {
+    deleteShipment(id);
+    setShipments(getShipments());
   }
 
   return (
     <>
-      {testShipment  && <TestShipmentModal shipment={testShipment} onClose={() => setTestShipment(null)} />}
-      {editingShipment && <EditShipmentModal shipment={editingShipment} onSave={handleSave} onClose={() => setEditing(null)} />}
+      {testShipment && <TestShipmentModal shipment={testShipment} onClose={() => setTestShipment(null)} />}
+      {editing      && <EditShipmentModal shipment={editing} onSave={handleSave} onClose={() => setEditing(null)} />}
 
       <div className="flex-1 py-12 px-6">
-        <div className="container mx-auto max-w-5xl space-y-8">
+        <div className="container mx-auto max-w-6xl space-y-8">
 
           {/* Header */}
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -458,7 +433,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             })}
           </div>
 
-          {/* Admin actions */}
+          {/* Admin quick-actions */}
           <div>
             <h2 className="text-white font-bold text-lg mb-4">Quick Actions</h2>
             <div className="grid md:grid-cols-3 gap-5">
@@ -482,54 +457,69 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
           {/* Shipments table */}
           <div>
-            <h2 className="text-white font-bold text-lg mb-4">Shipments</h2>
-            <div className="bg-[#0d1627] border border-white/8 rounded-xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/8">
-                      {["Tracking ID", "Sender", "Recipient / Destination", "Service", "Status", "Payment", ""].map(col => (
-                        <th key={col} className="text-left text-white/40 font-semibold text-xs uppercase tracking-wider px-4 py-4 whitespace-nowrap">{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {shipments.map(row => (
-                      <tr key={row.id} className="hover:bg-white/2 transition-colors">
-                        <td className="px-4 py-4 font-mono text-[#00b8d4] text-xs font-semibold whitespace-nowrap">{row.id}</td>
-                        <td className="px-4 py-4">
-                          <div className="text-white/80 font-medium text-xs">{row.sender}</div>
-                          <div className="text-white/35 text-xs">{row.senderEmail}</div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-white/80 font-medium text-xs">{row.recipient}</div>
-                          <div className="text-white/35 text-xs max-w-[180px] truncate">{row.dest}</div>
-                        </td>
-                        <td className="px-4 py-4 text-white/55 text-xs whitespace-nowrap">{row.service}</td>
-                        <td className="px-4 py-4">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${statusColor(row.shipmentStatus)}`}>
-                            {row.shipmentStatus}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${paymentStyle(row.paymentStatus)}`}>
-                            {paymentLabel(row.paymentStatus)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <button
-                            onClick={() => setEditing(row)}
-                            className="flex items-center gap-1.5 text-xs font-semibold text-white/50 hover:text-[#00b8d4] border border-white/10 hover:border-[#00b8d4]/40 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-                          >
-                            <PenLine className="w-3.5 h-3.5" /> Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white font-bold text-lg">All Shipments</h2>
+              <span className="text-white/35 text-sm">{shipments.length} record{shipments.length !== 1 ? "s" : ""}</span>
             </div>
+
+            {shipments.length === 0 ? (
+              <div className="bg-[#0d1627] border border-white/8 rounded-xl p-12 text-center">
+                <Package className="w-10 h-10 text-white/15 mx-auto mb-3" />
+                <p className="text-white/35 text-sm">No shipments yet. Create one via the Quick Actions above.</p>
+              </div>
+            ) : (
+              <div className="bg-[#0d1627] border border-white/8 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/8">
+                        {["Tracking ID", "Created", "Sender", "Recipient / Destination", "Service", "Status", "Payment", "Actions"].map(col => (
+                          <th key={col} className="text-left text-white/40 font-semibold text-xs uppercase tracking-wider px-4 py-4 whitespace-nowrap">{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {shipments.map(row => (
+                        <tr key={row.id} className="hover:bg-white/2 transition-colors group">
+                          <td className="px-4 py-4 font-mono text-[#00b8d4] text-xs font-semibold whitespace-nowrap">{row.id}</td>
+                          <td className="px-4 py-4 text-white/35 text-xs whitespace-nowrap">{row.createdAt}</td>
+                          <td className="px-4 py-4">
+                            <div className="text-white/80 font-medium text-xs">{row.sender}</div>
+                            <div className="text-white/30 text-xs">{row.senderEmail}</div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="text-white/80 font-medium text-xs">{row.recipient}</div>
+                            <div className="text-white/30 text-xs max-w-[180px] truncate">{row.dest}</div>
+                          </td>
+                          <td className="px-4 py-4 text-white/55 text-xs whitespace-nowrap">{row.service}</td>
+                          <td className="px-4 py-4">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${statusColor(row.shipmentStatus)}`}>
+                              {row.shipmentStatus}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${paymentStyle(row.paymentStatus)}`}>
+                              {paymentLabel(row.paymentStatus)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setEditing(row)}
+                                className="flex items-center gap-1.5 text-xs font-semibold text-white/50 hover:text-[#00b8d4] border border-white/10 hover:border-[#00b8d4]/40 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                              >
+                                <PenLine className="w-3.5 h-3.5" /> Edit
+                              </button>
+                              <DeleteButton onConfirm={() => handleDelete(row.id)} />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
