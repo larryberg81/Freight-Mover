@@ -19,25 +19,34 @@ import { Contact } from '@/pages/contact';
 import { Track } from '@/pages/track';
 import { CreateShipment } from '@/pages/create-shipment';
 import { Admin } from '@/pages/admin';
+import { Receipt } from '@/pages/receipt';
 
 const queryClient = new QueryClient();
 
 function Router() {
   return (
-    <RootLayout>
-      <RoutedErrorBoundary>
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/about" component={About} />
-          <Route path="/services" component={Services} />
-          <Route path="/contact" component={Contact} />
-          <Route path="/track" component={Track} />
-          <Route path="/ship" component={CreateShipment} />
-          <Route path="/admin" component={Admin} />
-          <Route component={NotFound} />
-        </Switch>
-      </RoutedErrorBoundary>
-    </RootLayout>
+    <Switch>
+      {/* Receipt page — standalone, no navbar/footer */}
+      <Route path="/receipt/:trackingId" component={Receipt} />
+
+      {/* All other pages — wrapped in site layout */}
+      <Route>
+        <RootLayout>
+          <RoutedErrorBoundary>
+            <Switch>
+              <Route path="/" component={Home} />
+              <Route path="/about" component={About} />
+              <Route path="/services" component={Services} />
+              <Route path="/contact" component={Contact} />
+              <Route path="/track" component={Track} />
+              <Route path="/ship" component={CreateShipment} />
+              <Route path="/admin" component={Admin} />
+              <Route component={NotFound} />
+            </Switch>
+          </RoutedErrorBoundary>
+        </RootLayout>
+      </Route>
+    </Switch>
   );
 }
 

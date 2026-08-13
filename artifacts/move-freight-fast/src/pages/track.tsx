@@ -263,13 +263,13 @@ function ShipmentResult({ data }: { data: typeof MOCK_SHIPMENT }) {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={handleDownload}
+            <Link
+              href={`/receipt/${data.trackingId}`}
               className="flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm"
             >
               <Download className="w-4 h-4" />
               Download Receipt
-            </button>
+            </Link>
 
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
