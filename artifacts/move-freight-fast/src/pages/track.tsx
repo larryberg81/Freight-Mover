@@ -219,10 +219,15 @@ function buildReceiptHTML(data: typeof MOCK_SHIPMENT): string {
 
 function downloadReceipt(data: typeof MOCK_SHIPMENT) {
   const html = buildReceiptHTML(data);
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(html);
-  win.document.close();
+  const blob = new Blob([html], { type: "text/html" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `receipt-${data.trackingId}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 const STEPS = ["Picked Up", "In Transit", "Out for Delivery", "Delivered"];
