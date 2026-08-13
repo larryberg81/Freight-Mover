@@ -201,11 +201,11 @@ function storedToDisplay(s: ReturnType<typeof getShipments>[number]): ShipmentDi
 function lookupShipment(id: string): ShipmentDisplay | null {
   const trimmed = id.trim();
   if (!trimmed) return null;
-  // Check hardcoded demo shipment
-  if (trimmed === MOCK_SHIPMENT.trackingId) return MOCK_SHIPMENT;
-  // Check localStorage store
+  // Check localStorage store first — admin edits are always preferred
   const stored = getShipments().find(s => s.id === trimmed);
   if (stored) return storedToDisplay(stored);
+  // Fall back to hardcoded demo shipment
+  if (trimmed === MOCK_SHIPMENT.trackingId) return MOCK_SHIPMENT;
   return null;
 }
 
