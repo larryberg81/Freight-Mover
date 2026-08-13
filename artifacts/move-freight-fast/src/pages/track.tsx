@@ -18,16 +18,35 @@ import "leaflet/dist/leaflet.css";
 // ── Mock shipment data ──────────────────────────────────────────────────────
 const MOCK_SHIPMENT = {
   trackingId: "STN5088840683",
+  receiptDate: "August 09, 2026",
   status: "Pending",
+  paymentStatus: "UNPAID",
+  paymentMode: "Others",
+  baseShippingRate: 50.00,
+  weightCharges: 0.00,
+  insuranceFee: 0.00,
   statusLocation: "422 wyee farms road, wyee NSW 2259 Australia",
   progress: 10,
+  // Sender
+  senderName: "Williams Daxtron",
+  senderContact: "0445484376",
+  senderEmail: "4x4offroadwrecking@gmail.com",
+  senderAddress: "3175 Dandenong Vic Australia",
+  // Receiver
+  receiverName: "William Evans",
+  receiverContact: "0492071494",
+  receiverEmail: "william@binalong.com.au",
+  receiverAddress: "422 wyee farms road, wyee NSW 2259",
+  // Shipment
   origin: "3175 Dandenong Vic",
   destination: "422 wyee farms road, wyee NSW 2259",
   estDelivery: "Aug 06, 2026",
   weight: "12 kg",
   serviceType: "Overnight",
+  shipmentMode: "Land Freight",
+  carrier: "MoveFreight",
   dimensions: "40 × 30 × 20 cm",
-  insurance: "$0.00 Coverage",
+  insurance: "$0.00",
   signatureRequired: "Yes",
   // Approximate lat/lng: origin = Dandenong VIC, destination = Wyee NSW
   originCoords: [-37.9878, 145.2151] as [number, number],
@@ -61,6 +80,151 @@ const MOCK_SHIPMENT = {
   ],
 };
 
+// ── Receipt generator ────────────────────────────────────────────────────────
+function buildReceiptHTML(data: typeof MOCK_SHIPMENT): string {
+  const total = (data.baseShippingRate + data.weightCharges + data.insuranceFee).toFixed(2);
+  const isPaid = data.paymentStatus === "PAID";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Receipt – ${data.trackingId}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a2e;background:#fff;padding:32px}
+  .page{max-width:720px;margin:0 auto;position:relative}
+  /* header */
+  .logo{text-align:center;margin-bottom:10px}
+  .logo-text{font-size:28px;font-weight:700;color:#00b8d4;font-style:italic;line-height:1.1}
+  .header-info{text-align:center;color:#333;line-height:1.7;margin-bottom:6px;font-size:12px}
+  .header-meta{text-align:center;margin-bottom:16px;font-size:13px}
+  .header-meta strong{font-weight:700}
+  hr{border:none;border-top:2px solid #00b8d4;margin:16px 0}
+  /* two-column section */
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:24px}
+  .section-title{color:#00b8d4;font-weight:700;font-size:14px;margin-bottom:12px;padding-bottom:4px;border-bottom:1px solid #e5e7eb}
+  .info-row{display:flex;justify-content:space-between;margin-bottom:8px;gap:8px}
+  .info-label{color:#555;font-weight:400;flex-shrink:0}
+  .info-value{text-align:right;font-weight:500;color:#111}
+  /* shipment details */
+  .shipment-section{position:relative;margin-bottom:24px}
+  .shipment-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  /* watermark stamp */
+  .stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-20deg);width:160px;height:160px;border:6px solid ${isPaid ? "#16a34a" : "#ef4444"};border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0.18;pointer-events:none;z-index:1}
+  .stamp-approved{font-size:13px;font-weight:900;color:${isPaid ? "#16a34a" : "#ef4444"};letter-spacing:2px;text-transform:uppercase}
+  .stamp-status{font-size:22px;font-weight:900;color:${isPaid ? "#16a34a" : "#ef4444"};letter-spacing:2px;text-transform:uppercase}
+  /* payment summary */
+  .payment-section{border-left:4px solid #00b8d4;padding-left:16px;margin-bottom:24px}
+  .payment-title{color:#00b8d4;font-size:20px;font-weight:700;margin-bottom:14px}
+  .pay-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px}
+  .pay-row.total{font-size:16px;font-weight:700;border-top:2px solid #1a1a2e;padding-top:10px;margin-top:4px}
+  .status-badge{display:inline-block;padding:3px 14px;border:2px solid ${isPaid ? "#16a34a" : "#ef4444"};border-radius:4px;color:${isPaid ? "#16a34a" : "#ef4444"};font-weight:700;font-size:12px;letter-spacing:1px}
+  /* footer */
+  .footer{margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#888}
+  @media print{
+    body{padding:0}
+    @page{margin:20mm}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-text">Move Freight<br/>Fast</div>
+  </div>
+
+  <!-- Header info -->
+  <div class="header-info">
+    2005 Eye Street, Suite 9, Bakersfield, CA 93301<br/>
+    📞 +15015311020 &nbsp;|&nbsp; ✉ info@movefreightfast.com
+  </div>
+  <div class="header-meta">
+    <strong>Receipt #:</strong> ${data.trackingId} &nbsp;&nbsp;
+    <strong>Date:</strong> ${data.receiptDate}
+  </div>
+
+  <hr/>
+
+  <!-- Sender / Receiver -->
+  <div class="two-col">
+    <div>
+      <div class="section-title">Sender Information</div>
+      <div class="info-row"><span class="info-label">Name:</span><span class="info-value">${data.senderName}</span></div>
+      <div class="info-row"><span class="info-label">Contact:</span><span class="info-value">${data.senderContact}</span></div>
+      <div class="info-row"><span class="info-label">Email:</span><span class="info-value">${data.senderEmail}</span></div>
+      <div class="info-row"><span class="info-label">Address:</span><span class="info-value">${data.senderAddress}</span></div>
+    </div>
+    <div>
+      <div class="section-title">Receiver Information</div>
+      <div class="info-row"><span class="info-label">Name:</span><span class="info-value">${data.receiverName}</span></div>
+      <div class="info-row"><span class="info-label">Contact:</span><span class="info-value">${data.receiverContact}</span></div>
+      <div class="info-row"><span class="info-label">Email:</span><span class="info-value">${data.receiverEmail}</span></div>
+      <div class="info-row"><span class="info-label">Address:</span><span class="info-value">${data.receiverAddress}</span></div>
+    </div>
+  </div>
+
+  <!-- Shipment Details -->
+  <div class="shipment-section">
+    <div class="section-title">Shipment Details</div>
+    <!-- Watermark stamp -->
+    <div class="stamp">
+      <span class="stamp-approved">APPROVED</span>
+      <span class="stamp-status">${data.paymentStatus}</span>
+    </div>
+    <div class="shipment-grid">
+      <div>
+        <div class="info-row"><span class="info-label">Service Type:</span><span class="info-value">${data.serviceType}</span></div>
+        <div class="info-row"><span class="info-label">Weight:</span><span class="info-value">${data.weight}</span></div>
+        <div class="info-row"><span class="info-label">Dimensions:</span><span class="info-value">${data.dimensions}</span></div>
+        <div class="info-row"><span class="info-label">Carrier:</span><span class="info-value">${data.carrier}</span></div>
+      </div>
+      <div>
+        <div class="info-row"><span class="info-label">From:</span><span class="info-value">${data.origin}</span></div>
+        <div class="info-row"><span class="info-label">To:</span><span class="info-value">${data.destination}</span></div>
+        <div class="info-row"><span class="info-label">Shipment Mode:</span><span class="info-value">${data.shipmentMode}</span></div>
+        <div class="info-row"><span class="info-label">Insurance:</span><span class="info-value">${data.insurance}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Summary -->
+  <div class="payment-section">
+    <div class="payment-title">Payment Summary</div>
+    <div class="pay-row"><span>Base Shipping Rate:</span><span>$${data.baseShippingRate.toFixed(2)}</span></div>
+    <div class="pay-row"><span>Weight Charges:</span><span>$${data.weightCharges.toFixed(2)}</span></div>
+    <div class="pay-row"><span>Insurance Fee:</span><span>$${data.insuranceFee.toFixed(2)}</span></div>
+    <div class="pay-row total"><span>Total Amount:</span><span>$${total}</span></div>
+    <div class="pay-row" style="margin-top:12px">
+      <span>Payment Status:</span>
+      <span class="status-badge">${data.paymentStatus}</span>
+    </div>
+    <div class="pay-row" style="margin-top:8px"><span>Payment Mode:</span><span>${data.paymentMode}</span></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div>Move Freight Fast</div>
+    <div>© 2026 Move Freight Fast. All Rights Reserved.</div>
+  </div>
+
+</div>
+<script>window.onload=()=>window.print()</script>
+</body>
+</html>`;
+}
+
+function downloadReceipt(data: typeof MOCK_SHIPMENT) {
+  const html = buildReceiptHTML(data);
+  const win = window.open("", "_blank");
+  if (!win) return;
+  win.document.write(html);
+  win.document.close();
+}
+
 const STEPS = ["Picked Up", "In Transit", "Out for Delivery", "Delivered"];
 
 function getStepIndex(progress: number) {
@@ -76,6 +240,10 @@ function getStepIndex(progress: number) {
 function ShipmentResult({ data }: { data: typeof MOCK_SHIPMENT }) {
   const stepIdx = getStepIndex(data.progress);
 
+  function handleDownload() {
+    downloadReceipt(data);
+  }
+
   return (
     <div className="space-y-5">
 
@@ -90,7 +258,10 @@ function ShipmentResult({ data }: { data: typeof MOCK_SHIPMENT }) {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            <button className="flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm">
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm"
+            >
               <Download className="w-4 h-4" />
               Download Receipt
             </button>
