@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
+import { Link } from "wouter";
 import {
   Search,
   MapPin,
@@ -12,8 +13,10 @@ import {
   Info,
   Globe,
 } from "lucide-react";
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+
+// Lazy-load the Leaflet map so it never runs at module-eval time in production.
+// Leaflet accesses window/document on import, which crashes during SSR/build.
+const TrackingMap = lazy(() => import("../components/TrackingMap"));
 
 // ── Mock shipment data ──────────────────────────────────────────────────────
 const MOCK_SHIPMENT = {
@@ -342,29 +345,17 @@ function ShipmentResult({ data }: { data: typeof MOCK_SHIPMENT }) {
           <h3 className="text-white font-bold text-lg">Live Tracking Map</h3>
         </div>
         <div className="rounded-xl overflow-hidden" style={{ height: 320 }}>
-          <MapContainer
-            center={data.currentCoords}
-            zoom={5}
-            style={{ height: "100%", width: "100%" }}
-            scrollWheelZoom={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          <Suspense fallback={
+            <div className="w-full h-full bg-[#111827] flex items-center justify-center">
+              <div className="text-white/40 text-sm">Loading map…</div>
+            </div>
+          }>
+            <TrackingMap
+              originCoords={data.originCoords}
+              currentCoords={data.currentCoords}
+              destinationCoords={data.destinationCoords}
             />
-            {/* Origin */}
-            <CircleMarker center={data.originCoords} radius={10} pathOptions={{ color: "#16a34a", fillColor: "#16a34a", fillOpacity: 1 }}>
-              <Tooltip permanent direction="top" offset={[0, -10]}>Origin</Tooltip>
-            </CircleMarker>
-            {/* Current */}
-            <CircleMarker center={data.currentCoords} radius={12} pathOptions={{ color: "#f59e0b", fillColor: "#f59e0b", fillOpacity: 1 }}>
-              <Tooltip permanent direction="top" offset={[0, -12]}>Current</Tooltip>
-            </CircleMarker>
-            {/* Destination */}
-            <CircleMarker center={data.destinationCoords} radius={10} pathOptions={{ color: "#ef4444", fillColor: "#ef4444", fillOpacity: 1 }}>
-              <Tooltip permanent direction="top" offset={[0, -10]}>Destination</Tooltip>
-            </CircleMarker>
-          </MapContainer>
+          </Suspense>
         </div>
         <div className="flex items-center gap-6 mt-3">
           {[
