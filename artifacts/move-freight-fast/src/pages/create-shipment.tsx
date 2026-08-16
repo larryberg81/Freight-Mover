@@ -7,6 +7,7 @@ import {
   Truck, Copy, Search, ArrowRight,
 } from "lucide-react";
 import { addShipment } from "../lib/shipmentStore";
+import { geocodeAddress } from "../lib/geocode";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -432,11 +433,21 @@ export function CreateShipment() {
     return true;
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const now = new Date();
     const trackingId = generateTrackingId();
     const tz = getTimezoneForAddress(sender.country, sender.state);
     const createdAt = now.toLocaleString("en-AU", { timeZone: tz, dateStyle: "medium", timeStyle: "short" });
+
+    const originAddr = `${sender.street}, ${sender.city} ${sender.state} ${sender.postcode}, ${sender.country}`;
+    const destAddr   = `${recipient.street}, ${recipient.city} ${recipient.state} ${recipient.postcode}, ${recipient.country}`;
+
+    // Geocode both addresses concurrently at booking time so the map renders
+    // instantly for anyone who tracks this shipment later.
+    const [originCoords, destCoords] = await Promise.all([
+      geocodeAddress(originAddr),
+      geocodeAddress(destAddr),
+    ]);
 
     // Persist to shared store so admin page can display it
     addShipment({
@@ -445,11 +456,11 @@ export function CreateShipment() {
       sender: sender.name,
       senderEmail: sender.email,
       senderPhone: sender.phone,
-      senderAddress: `${sender.street}, ${sender.city} ${sender.state} ${sender.postcode}, ${sender.country}`,
+      senderAddress: originAddr,
       recipient: recipient.name,
       recipientEmail: recipient.email,
       recipientPhone: recipient.phone,
-      dest: `${recipient.street}, ${recipient.city} ${recipient.state} ${recipient.postcode}, ${recipient.country}`,
+      dest: destAddr,
       service: pkg.serviceType,
       weight: pkg.weight ? `${pkg.weight} kg` : "—",
       shipmentMode: "Land Freight",
@@ -460,6 +471,9 @@ export function CreateShipment() {
       notes: pkg.description,
       pickupDate: pkg.pickupDate,
       deliveryDate: pkg.deliveryDate,
+      // Only persist when both lookups succeeded — a partial result would mix a
+      // real coord with the sentinel and break isSentinelCoords() on the track page.
+      ...(originCoords && destCoords ? { originCoords, destCoords } : {}),
     });
 
     setResult({ trackingId, createdAt, sender, recipient, pkg });

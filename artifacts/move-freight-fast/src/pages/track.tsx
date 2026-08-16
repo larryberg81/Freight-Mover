@@ -113,9 +113,19 @@ function storedToDisplay(s: ReturnType<typeof getShipments>[number]): ShipmentDi
     insurance: s.insurance || "$0.00",
     signatureRequired: s.signatureRequired || "—",
     notifications: s.notifications || "",
-    originCoords: [-33.8688, 151.2093] as [number, number],
-    currentCoords: [-33.8688, 151.2093] as [number, number],
-    destinationCoords: [-33.8688, 151.2093] as [number, number],
+    // Use pre-geocoded coords only when BOTH are stored. A partial pair (one
+    // real coord + one sentinel) would make isSentinelCoords() return false and
+    // suppress the Nominatim fallback, leaving one pin at the wrong location.
+    // When either is missing, fall back to all-sentinel so geocoding triggers.
+    originCoords: (s.originCoords && s.destCoords)
+      ? s.originCoords
+      : ([-33.8688, 151.2093] as [number, number]),
+    currentCoords: (s.originCoords && s.destCoords)
+      ? lerpCoords(s.originCoords, s.destCoords, progress / 100)
+      : ([-33.8688, 151.2093] as [number, number]),
+    destinationCoords: (s.originCoords && s.destCoords)
+      ? s.destCoords
+      : ([-33.8688, 151.2093] as [number, number]),
     timeline: [
       {
         date: s.createdAt,

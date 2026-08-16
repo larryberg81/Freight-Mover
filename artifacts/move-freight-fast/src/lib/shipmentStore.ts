@@ -27,6 +27,8 @@ export interface StoredShipment {
   signatureRequired?: string;
   carrier?: string;
   notifications?: string;
+  originCoords?: [number, number];
+  destCoords?: [number, number];
 }
 
 const STORE_KEY  = "mff_shipments";
