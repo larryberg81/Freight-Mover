@@ -420,13 +420,21 @@ function ShipmentResult({ data }: { data: ShipmentDisplay }) {
             <h3 className="text-white font-bold text-lg">Notifications</h3>
           </div>
           {data.notifications ? (
-            <div className="flex items-start gap-3 bg-yellow-500/8 border border-yellow-500/20 rounded-xl px-4 py-3">
+            <div className="flex items-start gap-3 bg-yellow-500/8 border border-yellow-500/20 rounded-xl px-4 py-3 mb-4">
               <Bell className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
               <p className="text-white/80 text-sm leading-relaxed">{data.notifications}</p>
             </div>
           ) : (
-            <p className="text-white/40 text-sm">No notifications available</p>
+            <p className="text-white/40 text-sm mb-4">No notifications available</p>
           )}
+          {/* Payment method row */}
+          <div className="flex justify-between items-center text-sm border-t border-white/8 pt-4">
+            <span className="text-white/50 flex items-center gap-2">
+              <Info className="w-3.5 h-3.5" />
+              Payment Method
+            </span>
+            <span className="text-white font-semibold">{data.paymentMode || "—"}</span>
+          </div>
         </div>
 
         {/* Package Details */}

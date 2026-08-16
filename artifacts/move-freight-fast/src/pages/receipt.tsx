@@ -162,7 +162,11 @@ export function Receipt() {
 
   const statusColor = PAYMENT_COLORS[data.paymentStatus] ?? "#6b7280";
   const statusLabel = PAYMENT_LABELS[data.paymentStatus] ?? data.paymentStatus;
-  const total = (data.baseShippingRate + data.weightCharges + data.insuranceFee).toFixed(2);
+  // Guard against values stored as strings by the admin number input
+  const baseRate     = Number(data.baseShippingRate  ?? 0);
+  const weightCharge = Number(data.weightCharges     ?? 0);
+  const insuranceFee = Number(data.insuranceFee      ?? 0);
+  const total = (baseRate + weightCharge + insuranceFee).toFixed(2);
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 print:bg-white print:py-0 print:px-0">
@@ -298,15 +302,15 @@ export function Receipt() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-700">Base Shipping Rate:</span>
-                <span className="font-medium">${data.baseShippingRate.toFixed(2)}</span>
+                <span className="font-medium">${baseRate.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-700">Weight Charges:</span>
-                <span className="font-medium">${data.weightCharges.toFixed(2)}</span>
+                <span className="font-medium">${weightCharge.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-700">Insurance Fee:</span>
-                <span className="font-medium">${data.insuranceFee.toFixed(2)}</span>
+                <span className="font-medium">${insuranceFee.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center pt-3 mt-1 border-t-2 border-gray-800 font-bold text-base">
                 <span>Total Amount:</span>
