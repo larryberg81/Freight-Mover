@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/mobile-tracker/"
+title = "Move Freight Fast – Mobile"
+description = "A mobile companion app for Move Freight Fast that lets customers track their freight shipments on the go. Enter a tracking ID to see real-time status, progress milestones, shipment details, and a timeline of events. Mirrors the web app's dark navy theme with cyan accent colours."
+version = "1.0.0"
+id = "artifacts/mobile-tracker"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/mobile-tracker/" ]
+localPort = 25040
+
+[services.development]
+run = "pnpm --filter @workspace/mobile-tracker run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mobile-tracker", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/mobile-tracker", "run", "serve" ]
+
+[services.env]
+PORT = "25040"
+BASE_PATH = "/mobile-tracker/"

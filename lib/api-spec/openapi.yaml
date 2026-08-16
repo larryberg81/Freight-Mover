@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: shipments
+    description: Shipment tracking operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /shipments/{trackingId}:
+    get:
+      operationId: getShipment
+      tags: [shipments]
+      summary: Get shipment by tracking ID
+      description: Returns shipment details for a given tracking ID
+      parameters:
+        - name: trackingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Shipment found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShipmentDetails"
+        "404":
+          description: Shipment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +60,131 @@ components:
           type: string
       required:
         - status
-
+    NotFoundError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    TimelineEvent:
+      type: object
+      properties:
+        date:
+          type: string
+        time:
+          type: string
+          nullable: true
+        event:
+          type: string
+        location:
+          type: string
+        note:
+          type: string
+          nullable: true
+        status:
+          type: string
+      required:
+        - date
+        - event
+        - location
+        - status
+    ShipmentDetails:
+      type: object
+      properties:
+        trackingId:
+          type: string
+        receiptDate:
+          type: string
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        paymentMode:
+          type: string
+        baseShippingRate:
+          type: number
+        weightCharges:
+          type: number
+        insuranceFee:
+          type: number
+        statusLocation:
+          type: string
+        progress:
+          type: number
+        senderName:
+          type: string
+        senderContact:
+          type: string
+        senderEmail:
+          type: string
+        senderAddress:
+          type: string
+        receiverName:
+          type: string
+        receiverContact:
+          type: string
+        receiverEmail:
+          type: string
+        receiverAddress:
+          type: string
+        origin:
+          type: string
+        destination:
+          type: string
+        pickupDate:
+          type: string
+        estDelivery:
+          type: string
+        weight:
+          type: string
+        serviceType:
+          type: string
+        shipmentMode:
+          type: string
+        carrier:
+          type: string
+        dimensions:
+          type: string
+        insurance:
+          type: string
+        signatureRequired:
+          type: string
+        notifications:
+          type: string
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+      required:
+        - trackingId
+        - receiptDate
+        - status
+        - paymentStatus
+        - paymentMode
+        - baseShippingRate
+        - weightCharges
+        - insuranceFee
+        - statusLocation
+        - progress
+        - senderName
+        - senderContact
+        - senderEmail
+        - senderAddress
+        - receiverName
+        - receiverContact
+        - receiverEmail
+        - receiverAddress
+        - origin
+        - destination
+        - pickupDate
+        - estDelivery
+        - weight
+        - serviceType
+        - shipmentMode
+        - carrier
+        - dimensions
+        - insurance
+        - signatureRequired
+        - notifications
+        - timeline
