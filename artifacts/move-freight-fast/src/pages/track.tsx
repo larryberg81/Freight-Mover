@@ -289,6 +289,7 @@ function ShipmentResult({ data, resolvedCoords, geocoding }: {
                 originCoords={mapOrigin}
                 currentCoords={mapCurrent}
                 destinationCoords={mapDestination}
+                progress={data.progress / 100}
               />
             </Suspense>
           )}
