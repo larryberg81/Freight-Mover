@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { Printer, Eye } from "lucide-react";
 import { getShipments } from "../lib/shipmentStore";
@@ -143,7 +144,23 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 export function Receipt() {
   const params = useParams<{ trackingId: string }>();
   const trackingId = params.trackingId ?? "";
-  const data = findReceipt(trackingId);
+  const [data, setData] = useState<ReceiptData | null>(() => findReceipt(trackingId));
+
+  // Re-query when localStorage changes (cross-tab: 'storage', same-tab: 'mff-shipments-updated').
+  useEffect(() => {
+    function refresh() {
+      setData(findReceipt(trackingId));
+    }
+    function handleStorage(e: StorageEvent) {
+      if (e.key === null || e.key === "mff_shipments") refresh();
+    }
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("mff-shipments-updated", refresh);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("mff-shipments-updated", refresh);
+    };
+  }, [trackingId]);
 
   if (!data) {
     return (

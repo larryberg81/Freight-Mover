@@ -53,6 +53,8 @@ export function getShipments(): StoredShipment[] {
 
 function persist(shipments: StoredShipment[]) {
   localStorage.setItem(STORE_KEY, JSON.stringify(shipments));
+  // Notify same-tab listeners; cross-tab listeners receive the native 'storage' event automatically.
+  window.dispatchEvent(new CustomEvent("mff-shipments-updated"));
 }
 
 export function addShipment(shipment: StoredShipment): void {

@@ -552,6 +552,30 @@ export function Track() {
     return () => { geocodeAbortRef.current?.abort(); };
   }, []);
 
+  // Re-query when localStorage changes (cross-tab: 'storage', same-tab: 'mff-shipments-updated').
+  // Only active while a result is displayed so we don't fire unnecessary lookups.
+  useEffect(() => {
+    if (!submitted || !trackingId.trim()) return;
+
+    function refresh() {
+      const display = lookupShipment(trackingId);
+      setResult(display);
+      // Kick off geocoding only if we have a result and geocoding isn't already running.
+      if (display && !geocoding) startGeocoding(display);
+    }
+
+    function handleStorage(e: StorageEvent) {
+      if (e.key === null || e.key === "mff_shipments") refresh();
+    }
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("mff-shipments-updated", refresh);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("mff-shipments-updated", refresh);
+    };
+  }, [submitted, trackingId, geocoding]);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!trackingId.trim()) return;
