@@ -29,10 +29,15 @@ export interface StoredShipment {
   notifications?: string;
   originCoords?: [number, number];
   destCoords?: [number, number];
+  /** Admin-set current location address shown on the tracking page status bar. */
+  currentLocation?: string;
+  /** Geocoded coordinates for currentLocation — overrides the auto-lerped pin. */
+  currentCoords?: [number, number];
 }
 
 const STORE_KEY  = "mff_shipments";
-const SEEDED_KEY = "mff_seeded";
+// v2: bumped to include the NY→Maine demo shipment with currentLocation support.
+const SEEDED_KEY = "mff_seeded_v2";
 
 // ── Seed ─────────────────────────────────────────────────────────────────────
 // Call once on admin mount with the demo rows. Only writes on first ever visit.

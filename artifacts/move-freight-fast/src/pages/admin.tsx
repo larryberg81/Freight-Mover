@@ -4,11 +4,13 @@ import {
   Lock, Eye, EyeOff, ShieldCheck,
   Package, Search, BarChart3, Users, Truck, Settings,
   Zap, Copy, CheckCircle2, X, PenLine, Save, CreditCard, Trash2,
+  MapPin, Loader2,
 } from "lucide-react";
 import {
   type StoredShipment,
   seedStore, getShipments, updateShipment, deleteShipment,
 } from "../lib/shipmentStore";
+import { geocodeAddress } from "../lib/geocode";
 
 const ADMIN_PASSWORD = "admin123";
 const SESSION_KEY    = "mff_admin_auth";
@@ -20,6 +22,26 @@ const SEED_SHIPMENTS: StoredShipment[] = [
   { id: "MFF9021847365", createdAt: "9 Aug 2026, 2:40 pm",   sender: "S. Okonkwo",    senderEmail: "sarah@globaltrade.com",        senderPhone: "+61 2 9000 1234", senderAddress: "88 George St, Sydney NSW 2000",        recipient: "Mark Thompson", recipientEmail: "mark@thompsoneng.co.uk",     recipientPhone: "+44 161 500 0022", dest: "88 Industrial Way, Manchester M1 2AB",          service: "Road Freight",               weight: "32.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Delivered",        paymentStatus: "PAID",             paymentMode: "Invoice",       baseRate: 85,  notes: "Fragile — handle with care", pickupDate: "2026-08-10", deliveryDate: "2026-08-13", dimensions: "120 × 80 × 60 cm", insurance: "$0.00",     signatureRequired: "Yes", carrier: "MoveFreight",         notifications: "Shipment delivered and signed by recipient." },
   { id: "MFF5088840683", createdAt: "9 Aug 2026, 11:02 am",  sender: "D. Reeves",     senderEmail: "d.reeves@reevesimports.au",    senderPhone: "+61 3 8800 5678", senderAddress: "3175 Dandenong Vic Australia",         recipient: "William Evans", recipientEmail: "william@binalong.com.au",    recipientPhone: "0492071494",       dest: "422 wyee farms road, wyee NSW 2259",            service: "Road Freight",               weight: "12.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Pending Pickup",   paymentStatus: "UNPAID",           paymentMode: "Others",        baseRate: 50,  notes: "ARB bullbar and drivers side guard", pickupDate: "2026-08-12", deliveryDate: "2026-08-15", dimensions: "40 × 30 × 20 cm",  insurance: "$0.00",     signatureRequired: "Yes", carrier: "MoveFreight",         notifications: "" },
   { id: "MFF7712039482", createdAt: "8 Aug 2026, 4:18 pm",   sender: "Acme Co.",      senderEmail: "dispatch@acmeco.com.au",       senderPhone: "+61 2 8000 3300", senderAddress: "99 Parramatta Rd, Sydney NSW 2150",    recipient: "Nina Patel",    recipientEmail: "nina@pateldist.nz",          recipientPhone: "+64 9 888 3300",   dest: "44 Commerce Street, Auckland 1010",             service: "International Air Freight",  weight: "5.2 kg",  shipmentMode: "Air Freight",  shipmentStatus: "Out for Delivery", paymentStatus: "DEPOSIT_RECEIVED", paymentMode: "Bank Transfer", baseRate: 210, notes: "",                              pickupDate: "2026-08-09", deliveryDate: "2026-08-13", dimensions: "50 × 35 × 25 cm",  insurance: "$850.00",   signatureRequired: "No",  carrier: "MoveFreight Air",     notifications: "Your package is out for delivery today. Estimated arrival: before 6 PM." },
+  // ── US demo: New York → Portland, Maine (currently in Boston) ───────────────
+  {
+    id: "MFF2026081601",
+    createdAt: "16 Aug 2026, 8:30 am",
+    sender: "Hudson Valley Freight",      senderEmail: "dispatch@hvfreight.com",        senderPhone: "+1 845 555 0100",
+    senderAddress: "200 Broadway, New York, NY 10038, United States",
+    recipient: "Maine Outdoor Co.",       recipientEmail: "receiving@maineoutdoor.com", recipientPhone: "+1 207 555 0220",
+    dest: "75 Market St, Portland, ME 04101, United States",
+    service: "Overnight Express", weight: "28.5 kg", shipmentMode: "Land Freight",
+    shipmentStatus: "In Transit", paymentStatus: "PAID", paymentMode: "Bank Transfer",
+    baseRate: 340, notes: "Electronics — handle with care. Temperature-controlled vehicle.",
+    pickupDate: "2026-08-16", deliveryDate: "2026-08-17",
+    dimensions: "90 × 60 × 45 cm", insurance: "$4,500.00", signatureRequired: "Yes",
+    carrier: "MoveFreight Express",
+    notifications: "Your shipment is currently in transit through Boston, MA. On track for delivery tomorrow by 2 PM.",
+    originCoords:  [40.7128, -74.0060] as [number, number],   // New York City
+    destCoords:    [43.6591, -70.2568] as [number, number],   // Portland, Maine
+    currentLocation: "Boston, MA",
+    currentCoords: [42.3601, -71.0589] as [number, number],   // Boston — mid-route
+  },
 ];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -209,10 +231,27 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
 }) {
   const [form, setForm] = useState<StoredShipment>({ ...shipment });
   const [saved, setSaved] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locateMsg, setLocateMsg] = useState<"success" | "error" | null>(null);
 
   const set = (k: keyof StoredShipment) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }));
+
+  async function handleLocate() {
+    const addr = form.currentLocation?.trim();
+    if (!addr) return;
+    setLocating(true);
+    setLocateMsg(null);
+    const coords = await geocodeAddress(addr);
+    setLocating(false);
+    if (coords) {
+      setForm(f => ({ ...f, currentCoords: coords }));
+      setLocateMsg("success");
+    } else {
+      setLocateMsg("error");
+    }
+  }
 
   function handleSave() {
     updateShipment(form);
@@ -339,6 +378,48 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
               <label className="block text-xs font-bold text-white/70 mb-1.5">Carrier</label>
               <input className={inputCls} placeholder="MoveFreight" value={form.carrier ?? ""} onChange={set("carrier")} />
             </div>
+          </div>
+
+          <Section title="Current Location" />
+          <div>
+            <label className="block text-xs font-bold text-white/70 mb-1.5">
+              Current Location Address
+              <span className="text-white/35 font-normal ml-1">(shown on tracking map &amp; status bar)</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                className={`${inputCls} flex-1`}
+                placeholder="e.g. Boston, MA  or  95 Main St, Hartford CT"
+                value={form.currentLocation ?? ""}
+                onChange={set("currentLocation")}
+              />
+              <button
+                type="button"
+                onClick={handleLocate}
+                disabled={locating || !form.currentLocation?.trim()}
+                className="px-4 py-2 bg-[#00b8d4] hover:bg-[#00a0bb] disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5"
+              >
+                {locating
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <MapPin className="w-3.5 h-3.5" />}
+                {locating ? "Locating…" : "Locate"}
+              </button>
+            </div>
+            {locateMsg === "success" && (
+              <p className="text-green-400 text-xs mt-1.5 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Coordinates saved — map pin updated
+              </p>
+            )}
+            {locateMsg === "error" && (
+              <p className="text-red-400 text-xs mt-1.5">
+                Address not found — try a more specific location.
+              </p>
+            )}
+            {form.currentCoords && locateMsg !== "error" && (
+              <p className="text-white/25 text-xs mt-1">
+                📍 {form.currentCoords[0].toFixed(4)}, {form.currentCoords[1].toFixed(4)}
+              </p>
+            )}
           </div>
 
           <Section title="Notifications" />

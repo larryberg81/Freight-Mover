@@ -91,7 +91,7 @@ function storedToDisplay(s: ReturnType<typeof getShipments>[number]): ShipmentDi
     baseShippingRate: s.baseRate,
     weightCharges: 0,
     insuranceFee: 0,
-    statusLocation: s.dest,
+    statusLocation: s.currentLocation || s.dest,
     progress,
     senderName: s.sender,
     senderContact: s.senderPhone,
@@ -120,9 +120,11 @@ function storedToDisplay(s: ReturnType<typeof getShipments>[number]): ShipmentDi
     originCoords: (s.originCoords && s.destCoords)
       ? s.originCoords
       : ([-33.8688, 151.2093] as [number, number]),
-    currentCoords: (s.originCoords && s.destCoords)
-      ? lerpCoords(s.originCoords, s.destCoords, progress / 100)
-      : ([-33.8688, 151.2093] as [number, number]),
+    // Admin-pinned position takes priority over the auto-lerped estimate.
+    currentCoords: s.currentCoords
+      ?? ((s.originCoords && s.destCoords)
+        ? lerpCoords(s.originCoords, s.destCoords, progress / 100)
+        : ([-33.8688, 151.2093] as [number, number])),
     destinationCoords: (s.originCoords && s.destCoords)
       ? s.destCoords
       : ([-33.8688, 151.2093] as [number, number]),
