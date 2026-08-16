@@ -299,25 +299,25 @@ export function Receipt() {
           <div className="border-l-4 border-[#00b8d4] pl-5 mb-8">
             <h3 className="text-[#00b8d4] font-bold text-xl mb-4">Payment Summary</h3>
 
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-sm text-gray-900">
               <div className="flex justify-between">
-                <span className="text-gray-700">Base Shipping Rate:</span>
-                <span className="font-medium">${baseRate.toFixed(2)}</span>
+                <span className="text-gray-600">Base Shipping Rate:</span>
+                <span className="font-semibold">${baseRate.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-700">Weight Charges:</span>
-                <span className="font-medium">${weightCharge.toFixed(2)}</span>
+                <span className="text-gray-600">Weight Charges:</span>
+                <span className="font-semibold">${weightCharge.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-700">Insurance Fee:</span>
-                <span className="font-medium">${insuranceFee.toFixed(2)}</span>
+                <span className="text-gray-600">Insurance Fee:</span>
+                <span className="font-semibold">${insuranceFee.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center pt-3 mt-1 border-t-2 border-gray-800 font-bold text-base">
+              <div className="flex justify-between items-center pt-3 mt-1 border-t-2 border-gray-800 font-bold text-base text-gray-900">
                 <span>Total Amount:</span>
                 <span>${total}</span>
               </div>
               <div className="flex justify-between items-center pt-3">
-                <span className="text-gray-700">Payment Status:</span>
+                <span className="text-gray-600">Payment Status:</span>
                 <span
                   className="px-3 py-1 rounded border-2 text-xs font-bold tracking-wide uppercase"
                   style={{ borderColor: statusColor, color: statusColor }}
@@ -326,8 +326,8 @@ export function Receipt() {
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-700">Payment Mode:</span>
-                <span className="font-medium">{data.paymentMode}</span>
+                <span className="text-gray-600">Payment Method:</span>
+                <span className="font-semibold text-gray-900">{data.paymentMode || "—"}</span>
               </div>
             </div>
           </div>
