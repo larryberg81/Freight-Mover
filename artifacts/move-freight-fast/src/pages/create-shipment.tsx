@@ -61,6 +61,58 @@ const COUNTRIES = [
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * Returns the IANA timezone for the sender's address so that createdAt is
+ * stamped in the sender's local time, not the browser's system clock.
+ */
+function getTimezoneForAddress(country: string, state: string): string {
+  const s = state.trim().toUpperCase();
+
+  switch (country) {
+    case "Australia": {
+      if (["NSW", "NEW SOUTH WALES", "ACT", "AUSTRALIAN CAPITAL TERRITORY"].includes(s)) return "Australia/Sydney";
+      if (["VIC", "VICTORIA"].includes(s)) return "Australia/Melbourne";
+      if (["QLD", "QUEENSLAND"].includes(s)) return "Australia/Brisbane";
+      if (["SA", "SOUTH AUSTRALIA"].includes(s)) return "Australia/Adelaide";
+      if (["WA", "WESTERN AUSTRALIA"].includes(s)) return "Australia/Perth";
+      if (["TAS", "TASMANIA"].includes(s)) return "Australia/Hobart";
+      if (["NT", "NORTHERN TERRITORY"].includes(s)) return "Australia/Darwin";
+      return "Australia/Sydney";
+    }
+    case "United States": {
+      // Eastern
+      if (["ME","NH","VT","MA","RI","CT","NY","NJ","PA","DE","MD","DC",
+           "VA","WV","NC","SC","GA","FL","OH","IN","MI","KY","TN"].includes(s)) return "America/New_York";
+      // Central
+      if (["WI","IL","MN","IA","MO","AR","LA","MS","AL","ND","SD","NE","KS","OK","TX"].includes(s)) return "America/Chicago";
+      // Mountain
+      if (["MT","WY","CO","NM","ID","UT","AZ"].includes(s)) return "America/Denver";
+      // Pacific
+      if (["WA","OR","CA","NV"].includes(s)) return "America/Los_Angeles";
+      if (["AK"].includes(s)) return "America/Anchorage";
+      if (["HI"].includes(s)) return "Pacific/Honolulu";
+      return "America/New_York";
+    }
+    case "Canada": {
+      if (["BC","BRITISH COLUMBIA"].includes(s)) return "America/Vancouver";
+      if (["AB","ALBERTA"].includes(s)) return "America/Edmonton";
+      if (["SK","SASKATCHEWAN"].includes(s)) return "America/Regina";
+      if (["MB","MANITOBA"].includes(s)) return "America/Winnipeg";
+      if (["ON","ONTARIO","QC","QUEBEC","QUÉBEC"].includes(s)) return "America/Toronto";
+      if (["NB","NS","PE","NEW BRUNSWICK","NOVA SCOTIA","PRINCE EDWARD ISLAND"].includes(s)) return "America/Halifax";
+      if (["NL","NEWFOUNDLAND","NEWFOUNDLAND AND LABRADOR"].includes(s)) return "America/St_Johns";
+      return "America/Toronto";
+    }
+    case "United Kingdom": return "Europe/London";
+    case "Germany":        return "Europe/Berlin";
+    case "France":         return "Europe/Paris";
+    case "New Zealand":    return "Pacific/Auckland";
+    case "Singapore":      return "Asia/Singapore";
+    case "Japan":          return "Asia/Tokyo";
+    default:               return "UTC";
+  }
+}
+
 function generateTrackingId() {
   const prefix = "MFF";
   const digits = Math.floor(1000000000 + Math.random() * 9000000000);
@@ -383,7 +435,8 @@ export function CreateShipment() {
   function handleSubmit() {
     const now = new Date();
     const trackingId = generateTrackingId();
-    const createdAt = now.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" });
+    const tz = getTimezoneForAddress(sender.country, sender.state);
+    const createdAt = now.toLocaleString("en-AU", { timeZone: tz, dateStyle: "medium", timeStyle: "short" });
 
     // Persist to shared store so admin page can display it
     addShipment({
