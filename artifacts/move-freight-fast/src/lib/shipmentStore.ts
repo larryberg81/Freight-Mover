@@ -22,6 +22,11 @@ export interface StoredShipment {
   notes: string;
   pickupDate?: string;
   deliveryDate?: string;
+  dimensions?: string;
+  insurance?: string;
+  signatureRequired?: string;
+  carrier?: string;
+  notifications?: string;
 }
 
 const STORE_KEY  = "mff_shipments";

@@ -54,6 +54,7 @@ const MOCK_SHIPMENT = {
   dimensions: "40 × 30 × 20 cm",
   insurance: "$0.00",
   signatureRequired: "Yes",
+  notifications: "",
   // Approximate lat/lng: origin = Dandenong VIC, destination = Wyee NSW
   originCoords: [-37.9878, 145.2151] as [number, number],
   currentCoords: [-33.5, 146.5] as [number, number], // midway (in transit)
@@ -109,8 +110,10 @@ interface ShipmentDisplay {
   receiverAddress: string;
   origin: string;
   destination: string;
+  pickupDate: string;
   estDelivery: string;
   weight: string;
+  notifications: string;
   serviceType: string;
   shipmentMode: string;
   carrier: string;
@@ -166,14 +169,16 @@ function storedToDisplay(s: ReturnType<typeof getShipments>[number]): ShipmentDi
     receiverAddress: s.dest,
     origin: s.senderAddress,
     destination: s.dest,
-    estDelivery,
+    pickupDate: s.pickupDate || "",
+    estDelivery: s.deliveryDate || estDelivery,
     weight: s.weight,
     serviceType: s.service,
     shipmentMode: s.shipmentMode,
-    carrier: "MoveFreight",
-    dimensions: "—",
-    insurance: "$0.00",
-    signatureRequired: "—",
+    carrier: s.carrier || "MoveFreight",
+    dimensions: s.dimensions || "—",
+    insurance: s.insurance || "$0.00",
+    signatureRequired: s.signatureRequired || "—",
+    notifications: s.notifications || "",
     originCoords: [-33.8688, 151.2093] as [number, number],
     currentCoords: [-33.8688, 151.2093] as [number, number],
     destinationCoords: [-33.8688, 151.2093] as [number, number],
@@ -568,7 +573,14 @@ function ShipmentResult({ data }: { data: ShipmentDisplay }) {
             <Bell className="w-5 h-5 text-yellow-400" />
             <h3 className="text-white font-bold text-lg">Notifications</h3>
           </div>
-          <p className="text-white/40 text-sm">No notifications available</p>
+          {data.notifications ? (
+            <div className="flex items-start gap-3 bg-yellow-500/8 border border-yellow-500/20 rounded-xl px-4 py-3">
+              <Bell className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <p className="text-white/80 text-sm leading-relaxed">{data.notifications}</p>
+            </div>
+          ) : (
+            <p className="text-white/40 text-sm">No notifications available</p>
+          )}
         </div>
 
         {/* Package Details */}

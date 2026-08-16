@@ -16,10 +16,10 @@ const SESSION_KEY    = "mff_admin_auth";
 // ── Seed data (demo rows shown on first ever visit) ───────────────────────────
 
 const SEED_SHIPMENTS: StoredShipment[] = [
-  { id: "MFF3847291056", createdAt: "10 Aug 2026, 9:15 am",  sender: "J. Hargreaves", senderEmail: "james@movefreightfast.com",  senderPhone: "+44 20 7946 0201", senderAddress: "12 Commerce Way, London EC1A 1BB",     recipient: "Alice Chen",    recipientEmail: "alice@pacificretail.com.au", recipientPhone: "+61 7 3200 9900",  dest: "12 Harbour View Rd, Brisbane QLD 4000",         service: "Overnight Express",          weight: "8.5 kg",  shipmentMode: "Air Freight",  shipmentStatus: "In Transit",       paymentStatus: "PAID",             paymentMode: "Bank Transfer", baseRate: 120, notes: "",                              pickupDate: "2026-08-11", deliveryDate: "2026-08-12" },
-  { id: "MFF9021847365", createdAt: "9 Aug 2026, 2:40 pm",   sender: "S. Okonkwo",    senderEmail: "sarah@globaltrade.com",        senderPhone: "+61 2 9000 1234", senderAddress: "88 George St, Sydney NSW 2000",        recipient: "Mark Thompson", recipientEmail: "mark@thompsoneng.co.uk",     recipientPhone: "+44 161 500 0022", dest: "88 Industrial Way, Manchester M1 2AB",          service: "Road Freight",               weight: "32.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Delivered",        paymentStatus: "PAID",             paymentMode: "Invoice",       baseRate: 85,  notes: "Fragile — handle with care", pickupDate: "2026-08-10", deliveryDate: "2026-08-13" },
-  { id: "MFF5088840683", createdAt: "9 Aug 2026, 11:02 am",  sender: "D. Reeves",     senderEmail: "d.reeves@reevesimports.au",    senderPhone: "+61 3 8800 5678", senderAddress: "3175 Dandenong Vic Australia",         recipient: "William Evans", recipientEmail: "william@binalong.com.au",    recipientPhone: "0492071494",       dest: "422 wyee farms road, wyee NSW 2259",            service: "Road Freight",               weight: "12.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Pending Pickup",   paymentStatus: "UNPAID",           paymentMode: "Others",        baseRate: 50,  notes: "ARB bullbar and drivers side guard", pickupDate: "2026-08-12", deliveryDate: "2026-08-15" },
-  { id: "MFF7712039482", createdAt: "8 Aug 2026, 4:18 pm",   sender: "Acme Co.",      senderEmail: "dispatch@acmeco.com.au",       senderPhone: "+61 2 8000 3300", senderAddress: "99 Parramatta Rd, Sydney NSW 2150",    recipient: "Nina Patel",    recipientEmail: "nina@pateldist.nz",          recipientPhone: "+64 9 888 3300",   dest: "44 Commerce Street, Auckland 1010",             service: "International Air Freight",  weight: "5.2 kg",  shipmentMode: "Air Freight",  shipmentStatus: "Out for Delivery", paymentStatus: "DEPOSIT_RECEIVED", paymentMode: "Bank Transfer", baseRate: 210, notes: "",                              pickupDate: "2026-08-09", deliveryDate: "2026-08-13" },
+  { id: "MFF3847291056", createdAt: "10 Aug 2026, 9:15 am",  sender: "J. Hargreaves", senderEmail: "james@movefreightfast.com",  senderPhone: "+44 20 7946 0201", senderAddress: "12 Commerce Way, London EC1A 1BB",     recipient: "Alice Chen",    recipientEmail: "alice@pacificretail.com.au", recipientPhone: "+61 7 3200 9900",  dest: "12 Harbour View Rd, Brisbane QLD 4000",         service: "Overnight Express",          weight: "8.5 kg",  shipmentMode: "Air Freight",  shipmentStatus: "In Transit",       paymentStatus: "PAID",             paymentMode: "Bank Transfer", baseRate: 120, notes: "",                              pickupDate: "2026-08-11", deliveryDate: "2026-08-12", dimensions: "60 × 40 × 35 cm",  insurance: "$1,200.00", signatureRequired: "Yes", carrier: "MoveFreight Express", notifications: "" },
+  { id: "MFF9021847365", createdAt: "9 Aug 2026, 2:40 pm",   sender: "S. Okonkwo",    senderEmail: "sarah@globaltrade.com",        senderPhone: "+61 2 9000 1234", senderAddress: "88 George St, Sydney NSW 2000",        recipient: "Mark Thompson", recipientEmail: "mark@thompsoneng.co.uk",     recipientPhone: "+44 161 500 0022", dest: "88 Industrial Way, Manchester M1 2AB",          service: "Road Freight",               weight: "32.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Delivered",        paymentStatus: "PAID",             paymentMode: "Invoice",       baseRate: 85,  notes: "Fragile — handle with care", pickupDate: "2026-08-10", deliveryDate: "2026-08-13", dimensions: "120 × 80 × 60 cm", insurance: "$0.00",     signatureRequired: "Yes", carrier: "MoveFreight",         notifications: "Shipment delivered and signed by recipient." },
+  { id: "MFF5088840683", createdAt: "9 Aug 2026, 11:02 am",  sender: "D. Reeves",     senderEmail: "d.reeves@reevesimports.au",    senderPhone: "+61 3 8800 5678", senderAddress: "3175 Dandenong Vic Australia",         recipient: "William Evans", recipientEmail: "william@binalong.com.au",    recipientPhone: "0492071494",       dest: "422 wyee farms road, wyee NSW 2259",            service: "Road Freight",               weight: "12.0 kg", shipmentMode: "Land Freight", shipmentStatus: "Pending Pickup",   paymentStatus: "UNPAID",           paymentMode: "Others",        baseRate: 50,  notes: "ARB bullbar and drivers side guard", pickupDate: "2026-08-12", deliveryDate: "2026-08-15", dimensions: "40 × 30 × 20 cm",  insurance: "$0.00",     signatureRequired: "Yes", carrier: "MoveFreight",         notifications: "" },
+  { id: "MFF7712039482", createdAt: "8 Aug 2026, 4:18 pm",   sender: "Acme Co.",      senderEmail: "dispatch@acmeco.com.au",       senderPhone: "+61 2 8000 3300", senderAddress: "99 Parramatta Rd, Sydney NSW 2150",    recipient: "Nina Patel",    recipientEmail: "nina@pateldist.nz",          recipientPhone: "+64 9 888 3300",   dest: "44 Commerce Street, Auckland 1010",             service: "International Air Freight",  weight: "5.2 kg",  shipmentMode: "Air Freight",  shipmentStatus: "Out for Delivery", paymentStatus: "DEPOSIT_RECEIVED", paymentMode: "Bank Transfer", baseRate: 210, notes: "",                              pickupDate: "2026-08-09", deliveryDate: "2026-08-13", dimensions: "50 × 35 × 25 cm",  insurance: "$850.00",   signatureRequired: "No",  carrier: "MoveFreight Air",     notifications: "Your package is out for delivery today. Estimated arrival: before 6 PM." },
 ];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -316,6 +316,36 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
             <div><label className="block text-xs font-bold text-white/70 mb-1.5">Phone</label><input className={inputCls} value={form.recipientPhone} onChange={set("recipientPhone")} /></div>
             <div><label className="block text-xs font-bold text-white/70 mb-1.5">Destination</label><input className={inputCls} value={form.dest} onChange={set("dest")} /></div>
           </div>
+
+          <Section title="Package Details" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Dimensions (e.g. 40 × 30 × 20 cm)</label>
+              <input className={inputCls} placeholder="—" value={form.dimensions ?? ""} onChange={set("dimensions")} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Insurance Value (e.g. $500.00)</label>
+              <input className={inputCls} placeholder="$0.00" value={form.insurance ?? ""} onChange={set("insurance")} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Signature Required</label>
+              <select className={selectCls} value={form.signatureRequired ?? ""} onChange={set("signatureRequired")}>
+                <option value="" className="bg-[#0a1020]">— Not set —</option>
+                <option value="Yes" className="bg-[#0a1020]">Yes</option>
+                <option value="No" className="bg-[#0a1020]">No</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 mb-1.5">Carrier</label>
+              <input className={inputCls} placeholder="MoveFreight" value={form.carrier ?? ""} onChange={set("carrier")} />
+            </div>
+          </div>
+
+          <Section title="Notifications" />
+          <textarea className={`${inputCls} resize-none`} rows={3}
+            placeholder="Enter customer-facing notification message (visible on tracking page)…"
+            value={form.notifications ?? ""} onChange={set("notifications")}
+          />
 
           <Section title="Dates" />
           <div className="grid grid-cols-2 gap-4">
