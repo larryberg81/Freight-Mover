@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Link } from "wouter";
 import {
   Search,
@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getShipments } from "../lib/shipmentStore";
+import { geocodeAddress, lerpCoords, AUSTRALIA_CENTRE } from "../lib/geocode";
 
 // Lazy-load the Leaflet map so it never runs at module-eval time in production.
 // Leaflet accesses window/document on import, which crashes during SSR/build.
@@ -224,9 +225,19 @@ function getStepIndex(progress: number) {
   return 3;
 }
 
-// ── Subcomponents ───────────────────────────────────────────────────────────
-
-function ShipmentResult({ data }: { data: ShipmentDisplay }) {
+interface ResolvedCoords {
+  origin: [number, number];
+  current: [number, number];
+  destination: [number, number];
+}
+function ShipmentResult({ data, resolvedCoords, geocoding }: {
+  data: ShipmentDisplay;
+  resolvedCoords: ResolvedCoords | null;
+  geocoding: boolean;
+}) {
+  const mapOrigin      = resolvedCoords?.origin      ?? data.originCoords;
+  const mapCurrent     = resolvedCoords?.current     ?? data.currentCoords;
+  const mapDestination = resolvedCoords?.destination ?? data.destinationCoords;
   const stepIdx = getStepIndex(data.progress);
 
   return (
@@ -323,17 +334,23 @@ function ShipmentResult({ data }: { data: ShipmentDisplay }) {
           <h3 className="text-white font-bold text-lg">Live Tracking Map</h3>
         </div>
         <div className="rounded-xl overflow-hidden" style={{ height: 320 }}>
-          <Suspense fallback={
+          {geocoding ? (
             <div className="w-full h-full bg-[#111827] flex items-center justify-center">
-              <div className="text-white/40 text-sm">Loading map…</div>
+              <div className="text-white/40 text-sm">Locating route…</div>
             </div>
-          }>
-            <TrackingMap
-              originCoords={data.originCoords}
-              currentCoords={data.currentCoords}
-              destinationCoords={data.destinationCoords}
-            />
-          </Suspense>
+          ) : (
+            <Suspense fallback={
+              <div className="w-full h-full bg-[#111827] flex items-center justify-center">
+                <div className="text-white/40 text-sm">Loading map…</div>
+              </div>
+            }>
+              <TrackingMap
+                originCoords={mapOrigin}
+                currentCoords={mapCurrent}
+                destinationCoords={mapDestination}
+              />
+            </Suspense>
+          )}
         </div>
         <div className="flex items-center gap-6 mt-3">
           {[
@@ -463,27 +480,87 @@ function ShipmentResult({ data }: { data: ShipmentDisplay }) {
   );
 }
 
-// ── Main page ───────────────────────────────────────────────────────────────
-
+/**
+ * Returns true when all three coord pairs are the same point —
+ * the sentinel we use for "not yet resolved / geocoding failed".
+ */
+function isSentinelCoords(d: ShipmentDisplay): boolean {
+  const [olat, olng] = d.originCoords;
+  const [dlat, dlng] = d.destinationCoords;
+  return olat === dlat && olng === dlng;
+}
 export function Track() {
   const [trackingId, setTrackingId] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<ShipmentDisplay | null>(null);
+  const [resolvedCoords, setResolvedCoords] = useState<ResolvedCoords | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+
+  // Stable refs that survive re-renders.
+  // geocodeAbortRef: cancels the in-flight Fetch when the user searches a new ID.
+  // geocodeGenRef: monotonic counter; only the callback whose gen matches the
+  //   current value is allowed to commit state, preventing stale results from
+  //   a slow previous lookup overwriting the current one.
+  const geocodeAbortRef = useRef<AbortController | null>(null);
+  const geocodeGenRef   = useRef<number>(0);
+
+  /**
+   * Cancel any in-flight geocoding request and reset geocoding state.
+   * Must be called at the start of every new submission, regardless of whether
+   * the new result needs geocoding, to ensure stale results can never land.
+   */
+  function cancelGeocoding() {
+    geocodeAbortRef.current?.abort();
+    geocodeAbortRef.current = null;
+    geocodeGenRef.current += 1;   // invalidate any pending callback
+    setGeocoding(false);
+    setResolvedCoords(null);
+  }
+
+  /**
+   * Start geocoding for a stored shipment that has sentinel/default coordinates.
+   * No-op for the demo shipment and any shipment that already has real coords.
+   */
+  function startGeocoding(display: ShipmentDisplay) {
+    if (!isSentinelCoords(display)) return; // already has real coords — nothing to do
+
+    const controller = new AbortController();
+    geocodeAbortRef.current = controller;
+    const gen = geocodeGenRef.current; // capture generation token
+
+    setGeocoding(true);
+
+    resolveCoords(display, controller.signal).then((coords) => {
+      // Discard this result if a newer lookup has since started
+      if (geocodeGenRef.current !== gen) return;
+      setResolvedCoords(coords);
+      setGeocoding(false);
+    });
+  }
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("id");
     if (id) {
       setTrackingId(id);
       setSubmitted(true);
-      setResult(lookupShipment(id));
+      cancelGeocoding();
+      const display = lookupShipment(id);
+      setResult(display);
+      if (display) startGeocoding(display);
     }
+    // Abort on unmount so an unresolved request never updates unmounted state.
+    return () => { geocodeAbortRef.current?.abort(); };
   }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!trackingId.trim()) return;
     setSubmitted(true);
-    setResult(lookupShipment(trackingId));
+    // Cancel any previous lookup unconditionally before starting a new one.
+    cancelGeocoding();
+    const display = lookupShipment(trackingId);
+    setResult(display);
+    if (display) startGeocoding(display);
   }
 
   return (
@@ -532,7 +609,13 @@ export function Track() {
           </div>
 
           {/* Results */}
-          {submitted && result && <ShipmentResult data={result} />}
+          {submitted && result && (
+            <ShipmentResult
+              data={result}
+              resolvedCoords={resolvedCoords}
+              geocoding={geocoding}
+            />
+          )}
 
           {/* Not found */}
           {submitted && !result && (
@@ -560,4 +643,24 @@ export function Track() {
 
     </div>
   );
+}
+
+/** Geocode origin + destination, then interpolate current position. */
+async function resolveCoords(
+  d: ShipmentDisplay,
+  signal: AbortSignal
+): Promise<ResolvedCoords | null> {
+  const [originResult, destResult] = await Promise.all([
+    geocodeAddress(d.origin, signal),
+    geocodeAddress(d.destination, signal),
+  ]);
+
+  if (signal.aborted) return null;
+
+  const origin = originResult ?? AUSTRALIA_CENTRE;
+  const dest = destResult ?? AUSTRALIA_CENTRE;
+  const t = d.progress / 100;
+  const current = lerpCoords(origin, dest, t);
+
+  return { origin, current, destination: dest };
 }
