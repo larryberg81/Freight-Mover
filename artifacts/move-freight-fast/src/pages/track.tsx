@@ -21,73 +21,6 @@ import { geocodeAddress, lerpCoords, AUSTRALIA_CENTRE } from "../lib/geocode";
 // Leaflet accesses window/document on import, which crashes during SSR/build.
 const TrackingMap = lazy(() => import("../components/TrackingMap"));
 
-// ── Mock shipment data ──────────────────────────────────────────────────────
-const MOCK_SHIPMENT = {
-  trackingId: "STN5088840683",
-  receiptDate: "August 09, 2026",
-  status: "Pending",
-  paymentStatus: "UNPAID",
-  paymentMode: "Others",
-  baseShippingRate: 50.00,
-  weightCharges: 0.00,
-  insuranceFee: 0.00,
-  statusLocation: "422 wyee farms road, wyee NSW 2259 Australia",
-  progress: 10,
-  // Sender
-  senderName: "Williams Daxtron",
-  senderContact: "0445484376",
-  senderEmail: "4x4offroadwrecking@gmail.com",
-  senderAddress: "3175 Dandenong Vic Australia",
-  // Receiver
-  receiverName: "William Evans",
-  receiverContact: "0492071494",
-  receiverEmail: "william@binalong.com.au",
-  receiverAddress: "422 wyee farms road, wyee NSW 2259",
-  // Shipment
-  origin: "3175 Dandenong Vic",
-  destination: "422 wyee farms road, wyee NSW 2259",
-  pickupDate: "Aug 04, 2026",
-  estDelivery: "Aug 06, 2026",
-  weight: "12 kg",
-  serviceType: "Overnight",
-  shipmentMode: "Land Freight",
-  carrier: "MoveFreight",
-  dimensions: "40 × 30 × 20 cm",
-  insurance: "$0.00",
-  signatureRequired: "Yes",
-  notifications: "",
-  // Approximate lat/lng: origin = Dandenong VIC, destination = Wyee NSW
-  originCoords: [-37.9878, 145.2151] as [number, number],
-  currentCoords: [-33.5, 146.5] as [number, number], // midway (in transit)
-  destinationCoords: [-33.0978, 151.4967] as [number, number],
-  timeline: [
-    {
-      date: "Aug 06, 2026",
-      time: null,
-      event: "Expected Delivery",
-      location: "422 wyee farms road, wyee NSW 2259",
-      note: null,
-      status: "pending",
-    },
-    {
-      date: "Aug 04, 2026",
-      time: "03:15 PM",
-      event: "Pending",
-      location: "422 wyee farms road, wyee NSW 2259 Australia",
-      note: "ARB bullbar complete and white drivers side guard for 2014 holden colorado",
-      status: "active",
-    },
-    {
-      date: "Aug 04, 2026",
-      time: "02:37 PM",
-      event: "Pending",
-      location: "Shipment information received",
-      note: null,
-      status: "done",
-    },
-  ],
-};
-
 // ── Store lookup ─────────────────────────────────────────────────────────────
 
 interface ShipmentDisplay {
@@ -210,8 +143,6 @@ function lookupShipment(id: string): ShipmentDisplay | null {
   // Check localStorage store first — admin edits are always preferred
   const stored = getShipments().find(s => s.id === trimmed);
   if (stored) return storedToDisplay(stored);
-  // Fall back to hardcoded demo shipment
-  if (trimmed === MOCK_SHIPMENT.trackingId) return MOCK_SHIPMENT;
   return null;
 }
 
@@ -618,7 +549,7 @@ export function Track() {
                   type="text"
                   value={trackingId}
                   onChange={(e) => setTrackingId(e.target.value)}
-                  placeholder="Enter tracking ID (e.g. STN5088840683)"
+                  placeholder="Enter tracking ID"
                   className="w-full h-13 py-3.5 pl-12 pr-4 bg-[#111827] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-[#00b8d4] transition-colors text-base"
                 />
               </div>
