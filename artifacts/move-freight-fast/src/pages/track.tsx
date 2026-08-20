@@ -14,8 +14,9 @@ import {
   Globe,
   AlertCircle,
 } from "lucide-react";
-import { getShipments } from "../lib/shipmentStore";
+import { getShipments, seedStore } from "../lib/shipmentStore";
 import { geocodeAddress, lerpCoords, AUSTRALIA_CENTRE } from "../lib/geocode";
+import { DEMO_SHIPMENTS } from "../lib/demoShipments";
 
 // Lazy-load the Leaflet map so it never runs at module-eval time in production.
 // Leaflet accesses window/document on import, which crashes during SSR/build.
@@ -483,6 +484,8 @@ export function Track() {
   }
 
   useEffect(() => {
+    // Demo IDs must work even when a customer reaches tracking before /admin.
+    seedStore(DEMO_SHIPMENTS);
     const id = new URLSearchParams(window.location.search).get("id");
     if (id) {
       setTrackingId(id);
