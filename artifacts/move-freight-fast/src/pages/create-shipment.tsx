@@ -449,8 +449,7 @@ export function CreateShipment() {
       geocodeAddress(destAddr),
     ]);
 
-    // Persist to shared store so admin page can display it
-    addShipment({
+    const storedShipment = {
       id: trackingId,
       createdAt,
       sender: sender.name,
@@ -474,6 +473,19 @@ export function CreateShipment() {
       // Only persist when both lookups succeeded — a partial result would mix a
       // real coord with the sentinel and break isSentinelCoords() on the track page.
       ...(originCoords && destCoords ? { originCoords, destCoords } : {}),
+    };
+
+    // Persist to local store (admin page) and shared API (mobile tracker)
+    addShipment(storedShipment);
+
+    // Fire-and-forget: POST to the API so mobile can look up by tracking ID.
+    // Failures are non-fatal — the booking has already succeeded locally.
+    fetch("/api/shipments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(storedShipment),
+    }).catch(() => {
+      // Network errors are silently ignored — the booking is still valid.
     });
 
     setResult({ trackingId, createdAt, sender, recipient, pkg });
