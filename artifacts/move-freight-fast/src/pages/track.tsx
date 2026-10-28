@@ -14,6 +14,7 @@ import {
   Globe,
   AlertCircle,
 } from "lucide-react";
+import type { ShipmentDetails } from "@workspace/api-client-react";
 import { getShipments, seedStore } from "../lib/shipmentStore";
 import { geocodeAddress, lerpCoords, AUSTRALIA_CENTRE } from "../lib/geocode";
 import { DEMO_SHIPMENTS } from "../lib/demoShipments";
@@ -159,7 +160,36 @@ function lookupShipment(id: string): ShipmentDisplay | null {
   return null;
 }
 
+function apiToDisplay(shipment: ShipmentDetails): ShipmentDisplay {
+  const fallbackCoords: [number, number] = [-33.8688, 151.2093];
+  return {
+    ...shipment,
+    originCoords: fallbackCoords,
+    currentCoords: fallbackCoords,
+    destinationCoords: fallbackCoords,
+    timeline: shipment.timeline.map((entry) => ({
+      ...entry,
+      time: entry.time ?? null,
+      note: entry.note ?? null,
+    })),
+  };
+}
+
+async function lookupSharedShipment(id: string): Promise<ShipmentDisplay | null> {
+  const trackingId = id.trim();
+  if (!trackingId) return null;
+
+  try {
+    const response = await fetch(`/api/shipments/${encodeURIComponent(trackingId)}`);
+    if (!response.ok) return null;
+    return apiToDisplay(await response.json() as ShipmentDetails);
+  } catch {
+    return null;
+  }
+}
+
 const STEPS = ["Picked Up", "In Transit", "Out for Delivery", "Delivered"];
+const TRACKING_REFRESH_INTERVAL_MS = 12_000;
 
 function getStepIndex(progress: number) {
   if (progress <= 0) return -1;
@@ -499,29 +529,45 @@ export function Track() {
     return () => { geocodeAbortRef.current?.abort(); };
   }, []);
 
-  // Re-query when localStorage changes (cross-tab: 'storage', same-tab: 'mff-shipments-updated').
-  // Only active while a result is displayed so we don't fire unnecessary lookups.
+  // Keep same-device storage events responsive, then prefer the shared API for
+  // the initial lookup and each timed refresh so remote admin changes arrive too.
   useEffect(() => {
     if (!submitted || !trackingId.trim()) return;
+    let cancelled = false;
 
-    function refresh() {
-      const display = lookupShipment(trackingId);
+    function showShipment(display: ShipmentDisplay | null) {
       setResult(display);
-      // Kick off geocoding only if we have a result and geocoding isn't already running.
-      if (display && !geocoding) startGeocoding(display);
+      if (display && !geocoding && !resolvedCoords) startGeocoding(display);
+    }
+
+    async function refreshFromSharedStore() {
+      const sharedShipment = await lookupSharedShipment(trackingId);
+      if (cancelled) return;
+      showShipment(sharedShipment ?? lookupShipment(trackingId));
+    }
+
+    function refreshFromLocalStore() {
+      showShipment(lookupShipment(trackingId));
+      void refreshFromSharedStore();
     }
 
     function handleStorage(e: StorageEvent) {
-      if (e.key === null || e.key === "mff_shipments") refresh();
+      if (e.key === null || e.key === "mff_shipments") refreshFromLocalStore();
     }
 
     window.addEventListener("storage", handleStorage);
-    window.addEventListener("mff-shipments-updated", refresh);
+    window.addEventListener("mff-shipments-updated", refreshFromLocalStore);
+    void refreshFromSharedStore();
+    const refreshInterval = window.setInterval(() => {
+      void refreshFromSharedStore();
+    }, TRACKING_REFRESH_INTERVAL_MS);
     return () => {
+      cancelled = true;
       window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("mff-shipments-updated", refresh);
+      window.removeEventListener("mff-shipments-updated", refreshFromLocalStore);
+      window.clearInterval(refreshInterval);
     };
-  }, [submitted, trackingId, geocoding]);
+  }, [submitted, trackingId, geocoding, resolvedCoords]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

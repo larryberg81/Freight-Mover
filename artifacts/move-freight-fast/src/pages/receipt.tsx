@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { Printer, Eye } from "lucide-react";
+import type { ShipmentDetails } from "@workspace/api-client-react";
 import { getShipments } from "../lib/shipmentStore";
 
 // ── Data types ────────────────────────────────────────────────────────────────
@@ -63,6 +64,8 @@ const DEMO_RECEIPTS: Record<string, ReceiptData> = {
   },
 };
 
+const RECEIPT_REFRESH_INTERVAL_MS = 12_000;
+
 // ── Data lookup ───────────────────────────────────────────────────────────────
 
 function findReceipt(trackingId: string): ReceiptData | null {
@@ -106,6 +109,46 @@ function findReceipt(trackingId: string): ReceiptData | null {
   return DEMO_RECEIPTS[trackingId] ?? null;
 }
 
+function apiToReceipt(shipment: ShipmentDetails): ReceiptData {
+  return {
+    trackingId: shipment.trackingId,
+    receiptDate: shipment.receiptDate,
+    senderName: shipment.senderName,
+    senderContact: shipment.senderContact,
+    senderEmail: shipment.senderEmail,
+    senderAddress: shipment.senderAddress,
+    receiverName: shipment.receiverName,
+    receiverContact: shipment.receiverContact,
+    receiverEmail: shipment.receiverEmail,
+    receiverAddress: shipment.receiverAddress,
+    serviceType: shipment.serviceType,
+    weight: shipment.weight,
+    dimensions: shipment.dimensions,
+    carrier: shipment.carrier,
+    origin: shipment.origin,
+    destination: shipment.destination,
+    shipmentMode: shipment.shipmentMode,
+    insurance: shipment.insurance,
+    pickupDate: shipment.pickupDate,
+    deliveryDate: shipment.estDelivery,
+    paymentStatus: shipment.paymentStatus,
+    paymentMode: shipment.paymentMode,
+    baseShippingRate: shipment.baseShippingRate,
+    weightCharges: shipment.weightCharges,
+    insuranceFee: shipment.insuranceFee,
+  };
+}
+
+async function findSharedReceipt(trackingId: string): Promise<ReceiptData | null> {
+  try {
+    const response = await fetch(`/api/shipments/${encodeURIComponent(trackingId)}`);
+    if (!response.ok) return null;
+    return apiToReceipt(await response.json() as ShipmentDetails);
+  } catch {
+    return null;
+  }
+}
+
 // ── Payment status helpers ────────────────────────────────────────────────────
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -146,19 +189,34 @@ export function Receipt() {
   const trackingId = params.trackingId ?? "";
   const [data, setData] = useState<ReceiptData | null>(() => findReceipt(trackingId));
 
-  // Re-query when localStorage changes (cross-tab: 'storage', same-tab: 'mff-shipments-updated').
+  // Same-device events update immediately; shared API polling keeps the receipt
+  // current after an admin saves changes from another device.
   useEffect(() => {
-    function refresh() {
+    let cancelled = false;
+
+    async function refreshFromSharedStore() {
+      const sharedReceipt = await findSharedReceipt(trackingId);
+      if (!cancelled) setData(sharedReceipt ?? findReceipt(trackingId));
+    }
+
+    function refreshFromLocalStore() {
       setData(findReceipt(trackingId));
+      void refreshFromSharedStore();
     }
     function handleStorage(e: StorageEvent) {
-      if (e.key === null || e.key === "mff_shipments") refresh();
+      if (e.key === null || e.key === "mff_shipments") refreshFromLocalStore();
     }
     window.addEventListener("storage", handleStorage);
-    window.addEventListener("mff-shipments-updated", refresh);
+    window.addEventListener("mff-shipments-updated", refreshFromLocalStore);
+    void refreshFromSharedStore();
+    const refreshInterval = window.setInterval(() => {
+      void refreshFromSharedStore();
+    }, RECEIPT_REFRESH_INTERVAL_MS);
     return () => {
+      cancelled = true;
       window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("mff-shipments-updated", refresh);
+      window.removeEventListener("mff-shipments-updated", refreshFromLocalStore);
+      window.clearInterval(refreshInterval);
     };
   }, [trackingId]);
 

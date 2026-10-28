@@ -5,6 +5,15 @@ import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
+function progressFromStatus(status: string): number {
+  const normalized = status.toLowerCase();
+  if (normalized.includes("delivered")) return 100;
+  if (normalized.includes("out for delivery")) return 75;
+  if (normalized.includes("in transit") || normalized.includes("transit")) return 50;
+  if (normalized.includes("picked up") || normalized.includes("pickup")) return 25;
+  return 10;
+}
+
 // ── Demo fallback (last-resort only) ─────────────────────────────────────────
 // Returned when a trackingId is not in the database — keeps the demo
 // shipment STN5088840683 working out-of-the-box without a database record.
@@ -70,8 +79,13 @@ const DEMO_SHIPMENTS: Record<string, unknown> = {
 };
 
 // ── GET /shipments/:trackingId ─────────────────────────────────────────────
-router.get("/shipments/:trackingId", async (req, res) => {
-  const { trackingId } = req.params;
+router.get("/shipments/:trackingId", async (req, res): Promise<void> => {
+  const rawTrackingId = req.params.trackingId;
+  const trackingId = Array.isArray(rawTrackingId) ? rawTrackingId[0] : rawTrackingId;
+  if (!trackingId) {
+    res.status(400).json({ error: "trackingId is required" });
+    return;
+  }
 
   // 1. Try the shared database (real shipments from the web app)
   try {
@@ -88,7 +102,7 @@ router.get("/shipments/:trackingId", async (req, res) => {
     }
   } catch (err) {
     // DB unavailable — fall through to demo data
-    console.error("DB lookup failed for", trackingId, err);
+    req.log.warn({ err, trackingId }, "Shared shipment lookup failed");
   }
 
   // 2. Fall back to hardcoded demo shipment
@@ -105,7 +119,7 @@ router.get("/shipments/:trackingId", async (req, res) => {
 // Called by the web app after a booking is created. Accepts the web app's
 // StoredShipment shape and converts it to the ShipmentDetails API shape so
 // the mobile app can retrieve it by tracking ID.
-router.post("/shipments", async (req, res) => {
+router.post("/shipments", async (req, res): Promise<void> => {
   const body = req.body as {
     id?: string;
     createdAt?: string;
@@ -134,6 +148,8 @@ router.post("/shipments", async (req, res) => {
     notifications?: string;
     originCoords?: [number, number];
     destCoords?: [number, number];
+    currentLocation?: string;
+    currentCoords?: [number, number];
   };
 
   const trackingId = body.id;
@@ -142,6 +158,8 @@ router.post("/shipments", async (req, res) => {
     return;
   }
 
+  const baseShippingRate = Number(body.baseRate ?? 0);
+
   // Convert StoredShipment → ShipmentDetails
   const shipmentData = {
     trackingId,
@@ -149,11 +167,11 @@ router.post("/shipments", async (req, res) => {
     status: body.shipmentStatus ?? "Pending Pickup",
     paymentStatus: body.paymentStatus ?? "UNPAID",
     paymentMode: body.paymentMode ?? "Others",
-    baseShippingRate: body.baseRate ?? 0,
+    baseShippingRate: Number.isFinite(baseShippingRate) ? baseShippingRate : 0,
     weightCharges: 0,
     insuranceFee: parseFloat(body.insurance ?? "0") || 0,
-    statusLocation: body.senderAddress ?? "",
-    progress: 10,
+    statusLocation: body.currentLocation ?? body.senderAddress ?? "",
+    progress: progressFromStatus(body.shipmentStatus ?? "Pending Pickup"),
     senderName: body.sender ?? "",
     senderContact: body.senderPhone ?? "",
     senderEmail: body.senderEmail ?? "",
@@ -216,7 +234,7 @@ router.post("/shipments", async (req, res) => {
 
     res.status(201).json({ trackingId });
   } catch (err) {
-    console.error("Failed to save shipment", trackingId, err);
+    req.log.error({ err, trackingId }, "Failed to save shipment");
     res.status(500).json({ error: "Failed to save shipment" });
   }
 });

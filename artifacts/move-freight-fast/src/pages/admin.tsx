@@ -7,7 +7,7 @@ import {
   MapPin, Loader2,
 } from "lucide-react";
 import {
-  seedStore, getShipments, updateShipment, deleteShipment,
+  seedStore, getShipments, updateShipment, deleteShipment, type StoredShipment,
 } from "../lib/shipmentStore";
 import { geocodeAddress } from "../lib/geocode";
 import { DEMO_SHIPMENTS } from "../lib/demoShipments";
@@ -204,6 +204,8 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
 }) {
   const [form, setForm] = useState<StoredShipment>({ ...shipment });
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [locating, setLocating] = useState(false);
   const [locateMsg, setLocateMsg] = useState<"success" | "error" | null>(null);
 
@@ -226,11 +228,28 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
     }
   }
 
-  function handleSave() {
-    updateShipment(form);
-    onSave(form);
-    setSaved(true);
-    setTimeout(() => { setSaved(false); onClose(); }, 800);
+  async function handleSave() {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const response = await fetch("/api/shipments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) {
+        throw new Error("The shared shipment record could not be updated.");
+      }
+
+      updateShipment(form);
+      onSave(form);
+      setSaved(true);
+      setTimeout(() => { setSaved(false); onClose(); }, 800);
+    } catch {
+      setSaveError("Changes could not be shared. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const Section = ({ title }: { title: string }) => (
@@ -424,16 +443,17 @@ function EditShipmentModal({ shipment, onSave, onClose }: {
 
         {/* Footer */}
         <div className="flex gap-3 px-6 py-5 border-t border-white/8 flex-shrink-0">
-          <button onClick={handleSave}
-            className={`flex-1 flex items-center justify-center gap-2 font-bold py-3 rounded-lg transition-all text-sm ${saved ? "bg-green-600 text-white" : "bg-[#00b8d4] hover:bg-[#00a0bb] text-white"}`}
+          <button onClick={handleSave} disabled={saving}
+            className={`flex-1 flex items-center justify-center gap-2 font-bold py-3 rounded-lg transition-all text-sm disabled:opacity-50 ${saved ? "bg-green-600 text-white" : "bg-[#00b8d4] hover:bg-[#00a0bb] text-white"}`}
           >
             {saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            {saved ? "Saved!" : "Save Changes"}
+            {saved ? "Saved!" : saving ? "Saving…" : "Save Changes"}
           </button>
           <button onClick={onClose} className="flex-1 border border-white/15 hover:border-white/30 text-white/70 hover:text-white font-semibold py-3 rounded-lg transition-colors text-sm">
             Cancel
           </button>
         </div>
+        {saveError && <p className="px-6 pb-4 text-sm text-red-400">{saveError}</p>}
       </div>
     </div>
   );
